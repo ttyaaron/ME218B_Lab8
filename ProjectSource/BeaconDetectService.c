@@ -1,21 +1,21 @@
 /****************************************************************************
  Module
-   EncoderService.c
+   BeaconDetectService.c
 
  Revision
    1.0.0
 
  Description
-   This service handles input capture from an encoder to measure RPM.
-   Uses interrupt-driven input capture to record encoder edge timing
-   and calculates rotational speed.
+   This service handles input capture from a phototransistor circuit to
+   measure beacon frequency. Uses interrupt-driven input capture to record
+   signal edge timing and detect 1427Hz beacon signal.
 
  Notes
-    When initializing the Encoder service:
+    When initializing the Beacon Detection service:
         Set the Input Capture pin to digital, input mode
         Configure Input Capture pin as digital input
 
-        Configure a dedicated encoder timer:
+        Configure a dedicated timer:
             Disable the timer
             Select internal PBCLK
             Set timer prescaler
@@ -25,50 +25,43 @@
             Enable the timer
 
         Configure Input Capture module:
-            Select encoder timer as time base
+            Select timer as time base
             Configure capture on rising (or desired) edge
             Clear input capture interrupt flag
             Enable input capture interrupt
 
-        Set PRINT_RPM_SPEED timeout to 100 ms
+        Set PRINT_FREQUENCY_INTERVAL timeout to 100 ms
         Initialize LastCapturedTime to invalid value
 
     Input Capture interrupt response routine:
         Read ICxBUF into a local variable CapturedTime
-        Post an ES_NEW_ENCODER_EDGE event
+        Post an ES_NEW_SIGNAL_EDGE event
         Clear the capture interrupt flag
 
-    On ES_NEW_ENCODER_EDGE event:
+    On ES_NEW_SIGNAL_EDGE event:
         If LastCapturedTime is valid:
             Calculate time lapse:
                 (CapturedTime − LastCapturedTime + TimerMaximum) mod TimerMaximum
-
-        Raise I/O timing pin
-        Map time lapse to LED bar pattern using lookup table
-        Write LED pattern
-        Lower I/O timing pin
+            Calculate frequency from time lapse
+            If frequency is close to 1427 Hz, post ES_BEACON_DETECTED event
 
         Store CapturedTime into LastCapturedTime
 
-    On ES_TIMEOUT for PRINT_RPM_SPEED:
-        Raise I/O timing pin
-        Calculate RPM from (current time − LastCapturedTime)
-        Lower I/O timing pin
-
-        Raise I/O timing pin
-        Print RPM value to screen
-        Lower I/O timing pin
+    On ES_TIMEOUT for PRINT_FREQUENCY_TIMER:
+        Calculate frequency from (current time − LastCapturedTime)
+        Print frequency value to screen
 
  History
  When           Who     What/Why
  -------------- ---     --------
- 01/21/26       Tianyu  Initial creation for Lab 6
+ 02/03/26       Tianyu  Initial creation for Lab 8 beacon detection
 ****************************************************************************/
 /*----------------------------- Include Files -----------------------------*/
 #include "ES_Configure.h"
 #include "ES_Framework.h"
 #include "ES_Timers.h"
-#include "EncoderService.h"
+#include "BeaconDetectService.h"
+#include "MainLogicFSM.h"
 #include "dbprintf.h"
 #include "TimerConfig.h"
 #include <xc.h>
@@ -76,43 +69,32 @@
 
 /*----------------------------- Module Defines ----------------------------*/
 // Timer definitions
-#define PRINT_RPM_INTERVAL 100 // Print RPM every 100ms
+#define PRINT_FREQUENCY_INTERVAL 100 // Print frequency every 100ms
 
 // Input Capture pin configuration (IC1 on RB2/pin 6)
 #define IC_PIN_TRIS TRISBbits.TRISB2
 #define IC_PIN_ANSEL ANSELBbits.ANSB2
 
-// Timing pin for performance measurement (using RB15/pin 26)
-#define TIMING_PIN_TRIS TRISBbits.TRISB15
-#define TIMING_PIN_ANSEL ANSELBbits.ANSB15
-#define TIMING_PIN_LAT LATBbits.LATB15
 
 // Timer configuration
 #define TIMER_PRESCALE 256
 #define PRESCALE_CHOSEN PRESCALE_256
 #define TIMER_MAX_PERIOD 0xFFFFFFFF // 32-bit timer maximum
 
-// RPM calculation constants
+// Frequency calculation constants
 #define INVALID_TIME 0xFFFFFFFF // Marker for invalid/uninitialized time
 #define IC_PRESCALE 16          // Input Capture prescale (captures every 16th edge)
-#define IC_ENCODER_EDGES_PER_REV (3048 / IC_PRESCALE) // Number of encoder edges per revolution
 #define PBCLK_FREQ 20000000     // 20 MHz peripheral bus clock
-#define SECONDS_PER_MINUTE 60
 
-// LED bar pins (RA0, RA1, RA2, RA3, RA4, RB10, RB11, RB12)
-#define NUM_LEDS 8
-#define MIN_TIME_LAPSE (128000/TIMER_PRESCALE)
-#define MAX_TIME_LAPSE (10500000/TIMER_PRESCALE)
+// Beacon detection parameters
+#define TARGET_BEACON_FREQ 1427  // Target beacon frequency in Hz
+#define BEACON_FREQ_TOLERANCE 50 // ±50 Hz tolerance for beacon detection
 
 /*---------------------------- Module Functions ---------------------------*/
 /* Prototypes for private functions for this service */
-static void ConfigureEncoderTimer(void);
+static void ConfigureICTimer(void);
 static void ConfigureInputCapture(void);
-static void ConfigureTimingPin(void);
-static uint8_t MapTimeLapseToLEDPattern(uint32_t timeLapse);
-static uint32_t CalculateRPM(uint32_t timeLapse);
-static void ConfigureLEDs(void);
-static void WriteLEDPattern(uint8_t pattern);
+static uint32_t CalculateFrequency(uint32_t timeLapse);
 
 /*---------------------------- Module Variables ---------------------------*/
 // Module level Priority variable
@@ -127,24 +109,10 @@ static volatile uint16_t RolloverCounter = 0; // Counts Timer3 rollovers for ext
 static uint32_t SmoothedTimeLapse = 0;
 static bool FirstSample = true;
 
-// LED pattern lookup table (smaller time = faster = less LEDs)
-static const uint8_t LEDPatternLookup[] = {
-  0x01, // Fast
-  0x03,
-  0x07,
-  0x0F,
-  0x1F,
-  0x3F,
-  0x7F, // Slow
-  0xFF  // Very slow or stopped
-};
-
-#define NUM_LED_PATTERNS (sizeof(LEDPatternLookup) / sizeof(LEDPatternLookup[0]))
-
 /*------------------------------ Module Code ------------------------------*/
 /****************************************************************************
  Function
-     InitEncoderService
+     InitBeaconDetectService
 
  Parameters
      uint8_t : the priority of this service
@@ -153,19 +121,19 @@ static const uint8_t LEDPatternLookup[] = {
      bool, false if error in initialization, true otherwise
 
  Description
-     Initializes the Input Capture module, encoder timer, and timing pin
+     Initializes the Input Capture module, phototransistor timer, and timing pin
 
  Author
-     Tianyu, 01/21/26
+     Tianyu, 02/03/26
 ****************************************************************************/
-bool InitEncoderService(uint8_t Priority)
+bool InitBeaconDetectService(uint8_t Priority)
 {
   ES_Event_t ThisEvent;
 
   MyPriority = Priority;
   
   /********************************************
-   Initialization code for Encoder Service
+   Initialization code for Beacon Detection Service
    *******************************************/
   
   // Configure the Input Capture pin as digital input
@@ -174,24 +142,22 @@ bool InitEncoderService(uint8_t Priority)
 
   IC1R = 0b0100; // Map IC1 to RB2
   
-  // Configure LED pins as digital outputs
-  ConfigureLEDs();
-
-  // Configure timing pin for performance measurement
-  ConfigureTimingPin();
   
-  // Configure the dedicated encoder timer
-  ConfigureEncoderTimer();
+  // Configure the dedicated phototransistor timer
+  ConfigureICTimer();
   
   // Configure the Input Capture module
   ConfigureInputCapture();
+  
+  // Configure timing pin for performance measurement
+  ConfigureTimingPin();
   
   // Initialize timing variables
   LastCapturedTime = INVALID_TIME;
   CapturedTime = 0;
   
-  // Start the RPM print timer
-  ES_Timer_InitTimer(PRINT_RPM_TIMER, PRINT_RPM_INTERVAL);
+  // Start the frequency print timer
+  ES_Timer_InitTimer(PRINT_FREQUENCY_TIMER, PRINT_FREQUENCY_INTERVAL);
   
   // Post the initial transition event
   ThisEvent.EventType = ES_INIT;
@@ -207,7 +173,7 @@ bool InitEncoderService(uint8_t Priority)
 
 /****************************************************************************
  Function
-     PostEncoderService
+     PostBeaconDetectService
 
  Parameters
      ES_Event_t ThisEvent, the event to post to the queue
@@ -219,16 +185,16 @@ bool InitEncoderService(uint8_t Priority)
      Posts an event to this state machine's queue
 
  Author
-     Tianyu, 01/21/26
+     Tianyu, 02/03/26
 ****************************************************************************/
-bool PostEncoderService(ES_Event_t ThisEvent)
+bool PostBeaconDetectService(ES_Event_t ThisEvent)
 {
   return ES_PostToService(MyPriority, ThisEvent);
 }
 
 /****************************************************************************
  Function
-    RunEncoderService
+    RunBeaconDetectService
 
  Parameters
    ES_Event_t : the event to process
@@ -237,12 +203,13 @@ bool PostEncoderService(ES_Event_t ThisEvent)
    ES_Event, ES_NO_EVENT if no error ES_ERROR otherwise
 
  Description
-   Handles encoder edge events and timeout events for RPM printing
+   Handles signal edge events and timeout events for frequency printing
+   and beacon detection
 
  Author
-   Tianyu, 01/21/26
+   Tianyu, 02/03/26
 ****************************************************************************/
-ES_Event_t RunEncoderService(ES_Event_t ThisEvent)
+ES_Event_t RunBeaconDetectService(ES_Event_t ThisEvent)
 {
   ES_Event_t ReturnEvent;
   ReturnEvent.EventType = ES_NO_EVENT; // assume no errors
@@ -251,10 +218,10 @@ ES_Event_t RunEncoderService(ES_Event_t ThisEvent)
   {
     case ES_INIT:
       // Initialization complete, nothing additional to do
-      DB_printf("Encoder Service Initialized\r\n");
+      DB_printf("Beacon Detection Service Initialized\r\n");
       break;
       
-    case ES_NEW_ENCODER_EDGE:
+    case ES_NEW_SIGNAL_EDGE:
     {
         
         // Latch current captured time
@@ -288,12 +255,19 @@ ES_Event_t RunEncoderService(ES_Event_t ThisEvent)
           SmoothedTimeLapse = (timeLapse + 5 * SmoothedTimeLapse) / 6;
         }
         
+        // Calculate frequency and check if it matches beacon frequency
+        uint32_t frequency = CalculateFrequency(SmoothedTimeLapse);
         
-        // Update LED bar display based on speed
-//        TIMING_PIN_LAT = 1; // Raise timing pin
-        uint8_t ledPattern = MapTimeLapseToLEDPattern(SmoothedTimeLapse);
-        WriteLEDPattern(ledPattern);
-//        TIMING_PIN_LAT = 0; // Lower timing pin
+        // Check if frequency is close to target beacon frequency
+        if ((frequency >= (TARGET_BEACON_FREQ - BEACON_FREQ_TOLERANCE)) &&
+            (frequency <= (TARGET_BEACON_FREQ + BEACON_FREQ_TOLERANCE)))
+        {
+          // Post beacon detected event to MainLogicFSM
+          ES_Event_t BeaconEvent;
+          BeaconEvent.EventType = ES_BEACON_DETECTED;
+          BeaconEvent.EventParam = frequency;
+          PostMainLogicFSM(BeaconEvent);
+        }
       }
       
       // Store current capture as the last capture for next calculation
@@ -302,21 +276,19 @@ ES_Event_t RunEncoderService(ES_Event_t ThisEvent)
     }
     
     case ES_TIMEOUT:
-      // Check if this is the RPM print timer
-      if (ThisEvent.EventParam == PRINT_RPM_TIMER)
+      // Check if this is the frequency print timer
+      if (ThisEvent.EventParam == PRINT_FREQUENCY_TIMER)
       {
-        // Calculate and print RPM
+        // Calculate and print frequency
         TIMING_PIN_LAT = 1; // Raise timing pin
-        uint32_t rpm = CalculateRPM(SmoothedTimeLapse);
+        uint32_t frequency = CalculateFrequency(SmoothedTimeLapse);
         TIMING_PIN_LAT = 0; // Lower timing pin
           
-        // Print RPM to screen
-//        TIMING_PIN_LAT = 1; // Raise timing pin
-        DB_printf("RPM*100: %d\r\n", rpm);
-//        TIMING_PIN_LAT = 0; // Lower timing pin
+        // Print frequency to screen
+        DB_printf("Frequency: %d Hz\r\n", frequency);
         
-        // Restart the RPM print timer
-        ES_Timer_InitTimer(PRINT_RPM_TIMER, PRINT_RPM_INTERVAL);
+        // Restart the frequency print timer
+        ES_Timer_InitTimer(PRINT_FREQUENCY_TIMER, PRINT_FREQUENCY_INTERVAL);
       }
       break;
       
@@ -339,10 +311,10 @@ ES_Event_t RunEncoderService(ES_Event_t ThisEvent)
 
  Description
      Input Capture interrupt response routine. Reads the captured time
-     and posts an event to the encoder service.
+     and posts an event to the beacon detection service.
 
  Author
-     Tianyu, 01/21/26
+     Tianyu, 02/03/26
 ****************************************************************************/
 void __ISR(_INPUT_CAPTURE_1_VECTOR, IPL7SOFT) InputCaptureISR(void)
 {
@@ -368,8 +340,8 @@ void __ISR(_INPUT_CAPTURE_1_VECTOR, IPL7SOFT) InputCaptureISR(void)
   
   // Post event for the captured value
   ES_Event_t NewEvent;
-  NewEvent.EventType = ES_NEW_ENCODER_EDGE;
-  PostEncoderService(NewEvent);
+  NewEvent.EventType = ES_NEW_SIGNAL_EDGE;
+  PostBeaconDetectService(NewEvent);
 }
 
 /****************************************************************************
@@ -389,7 +361,7 @@ void __ISR(_INPUT_CAPTURE_1_VECTOR, IPL7SOFT) InputCaptureISR(void)
      period measurements.
 
  Author
-     Tianyu, 01/22/26
+     Tianyu, 02/03/26
 ****************************************************************************/
 void __ISR(_TIMER_3_VECTOR, IPL6SOFT) Timer3ISR(void)
 {
@@ -416,7 +388,7 @@ void __ISR(_TIMER_3_VECTOR, IPL6SOFT) Timer3ISR(void)
 
 /****************************************************************************
  Function
-     ConfigureEncoderTimer
+     ConfigureICTimer
 
  Parameters
      None
@@ -428,9 +400,9 @@ void __ISR(_TIMER_3_VECTOR, IPL6SOFT) Timer3ISR(void)
      Configures Timer3 as the time base for input capture with maximum period
 
  Author
-     Tianyu, 01/21/26
+     Tianyu, 02/03/26
 ****************************************************************************/
-static void ConfigureEncoderTimer(void)
+static void ConfigureICTimer(void)
 {
   // Disable the timer during configuration
   T3CONbits.ON = 0;
@@ -476,7 +448,7 @@ static void ConfigureEncoderTimer(void)
      Timer3 as the time base
 
  Author
-     Tianyu, 01/21/26
+     Tianyu, 02/03/26
 ****************************************************************************/
 static void ConfigureInputCapture(void)
 {
@@ -517,172 +489,21 @@ static void ConfigureInputCapture(void)
 
 /****************************************************************************
  Function
-     ConfigureTimingPin
+     CalculateFrequency
 
  Parameters
-     None
+     uint32_t timeLapse - time between signal edges in timer ticks
 
  Returns
-     None
+     uint32_t - calculated frequency in Hz
 
  Description
-     Configures a GPIO pin for timing/performance measurement
+     Calculates frequency based on the time between signal edges
 
  Author
-     Tianyu, 01/21/26
+     Tianyu, 02/03/26
 ****************************************************************************/
-static void ConfigureTimingPin(void)
-{
-  // Configure timing pin as digital output
-  TIMING_PIN_TRIS = 0; // Output
-  TIMING_PIN_LAT = 0;  // Initialize low
-  TIMING_PIN_ANSEL = 0; // Disable analog functionw
-}
-
-/****************************************************************************
- Function
-     ConfigureLEDs
-
- Parameters
-     None
-
- Returns
-     None
-
- Description
-     Configures the eight LED pins as digital outputs and drives them low
-
- Author
-     Tianyu, 01/21/26
-****************************************************************************/
-static void ConfigureLEDs(void)
-{
-  // Disable analog on LED pins
-  ANSELAbits.ANSA0 = 0;
-  ANSELAbits.ANSA1 = 0;
-  ANSELBbits.ANSB12 = 0;
-
-  // Configure LED pins as outputs
-  TRISAbits.TRISA0 = 0;
-  TRISAbits.TRISA1 = 0;
-  TRISAbits.TRISA2 = 0;
-  TRISAbits.TRISA3 = 0;
-  TRISAbits.TRISA4 = 0;
-  TRISBbits.TRISB10 = 0;
-  TRISBbits.TRISB11 = 0;
-  TRISBbits.TRISB12 = 0;
-
-  // Initialize LEDs to off
-  LATAbits.LATA0 = 0;
-  LATAbits.LATA1 = 0;
-  LATAbits.LATA2 = 0;
-  LATAbits.LATA3 = 0;
-  LATAbits.LATA4 = 0;
-  LATBbits.LATB10 = 0;
-  LATBbits.LATB11 = 0;
-  LATBbits.LATB12 = 0;
-}
-
-/****************************************************************************
- Function
-     MapTimeLapseToLEDPattern
-
- Parameters
-     uint32_t timeLapse - time between encoder edges in timer ticks
-
- Returns
-     uint8_t - LED pattern to display
-
- Description
-     Maps the time between encoder edges to an LED bar pattern.
-     Shorter times (faster rotation) produce more lit LEDs.
-
- Author
-     Tianyu, 01/21/26
-****************************************************************************/
-static uint8_t MapTimeLapseToLEDPattern(uint32_t timeLapse)
-{
-  // Clamp timeLapse to valid range
-  if (timeLapse < MIN_TIME_LAPSE)
-  {
-    timeLapse = MIN_TIME_LAPSE;
-  }
-  if (timeLapse > MAX_TIME_LAPSE)
-  {
-    timeLapse = MAX_TIME_LAPSE;
-  }
-  
-  // Define threshold values for LED patterns
-  // Thresholds divide the range [MIN_TIME_LAPSE, MAX_TIME_LAPSE] into 8 zones
-  const uint32_t thresholds[] = {
-    MIN_TIME_LAPSE + (MAX_TIME_LAPSE - MIN_TIME_LAPSE) * 1 / 8,
-    MIN_TIME_LAPSE + (MAX_TIME_LAPSE - MIN_TIME_LAPSE) * 2 / 8,
-    MIN_TIME_LAPSE + (MAX_TIME_LAPSE - MIN_TIME_LAPSE) * 3 / 8,
-    MIN_TIME_LAPSE + (MAX_TIME_LAPSE - MIN_TIME_LAPSE) * 4 / 8,
-    MIN_TIME_LAPSE + (MAX_TIME_LAPSE - MIN_TIME_LAPSE) * 5 / 8,
-    MIN_TIME_LAPSE + (MAX_TIME_LAPSE - MIN_TIME_LAPSE) * 6 / 8,
-    MIN_TIME_LAPSE + (MAX_TIME_LAPSE - MIN_TIME_LAPSE) * 7 / 8,
-    MAX_TIME_LAPSE
-  };
-  
-  // Find appropriate LED pattern
-  for (uint8_t i = 0; i < NUM_LED_PATTERNS - 1; i++)
-  {
-    if (timeLapse < thresholds[i])
-    {
-      return LEDPatternLookup[i];
-    }
-  }
-  
-  // If timeLapse is larger than all thresholds, return slowest pattern
-  return LEDPatternLookup[NUM_LED_PATTERNS - 1];
-}
-
-  /****************************************************************************
-   Function
-     WriteLEDPattern
-
-   Parameters
-     uint8_t pattern - bit 0 corresponds to RA0, bit 7 to RB12
-
-   Returns
-     None
-
-   Description
-     Drives the eight discrete LED pins according to the provided pattern
-
-   Author
-     Tianyu, 01/21/26
-  ****************************************************************************/
-  static void WriteLEDPattern(uint8_t pattern)
-  {
-    LATAbits.LATA0 = (pattern >> 0) & 0x1;
-    LATAbits.LATA1 = (pattern >> 1) & 0x1;
-    LATAbits.LATA2 = (pattern >> 2) & 0x1;
-    LATAbits.LATA3 = (pattern >> 3) & 0x1;
-    LATAbits.LATA4 = (pattern >> 4) & 0x1;
-    LATBbits.LATB10 = (pattern >> 5) & 0x1;
-    LATBbits.LATB11 = (pattern >> 6) & 0x1;
-    LATBbits.LATB12 = (pattern >> 7) & 0x1;
-  }
-
-/****************************************************************************
- Function
-     CalculateRPM
-
- Parameters
-     uint32_t timeLapse - time between encoder edges in timer ticks
-
- Returns
-     uint32_t - calculated RPM
-
- Description
-     Calculates RPM based on the time between encoder edges
-
- Author
-     Tianyu, 01/21/26
-****************************************************************************/
-static uint32_t CalculateRPM(uint32_t timeLapse)
+static uint32_t CalculateFrequency(uint32_t timeLapse)
 {
   // Prevent division by zero
   if (timeLapse == 0)
@@ -690,13 +511,14 @@ static uint32_t CalculateRPM(uint32_t timeLapse)
     return 0;
   }
   
-  // Calculate frequency from timer ticks
+  // Calculate timer clock frequency
   uint32_t timerClock = PBCLK_FREQ / TIMER_PRESCALE;
   
-  // Calculate RPM
-  uint32_t rpm = (timerClock * SECONDS_PER_MINUTE * 100) / (timeLapse * IC_ENCODER_EDGES_PER_REV);
+  // Calculate frequency in Hz
+  // frequency = timerClock / (timeLapse * IC_PRESCALE)
+  uint32_t frequency = timerClock / (timeLapse * IC_PRESCALE);
   
-  return rpm;
+  return frequency;
 }
 
 /*------------------------------- Footnotes -------------------------------*/

@@ -22,7 +22,6 @@
 // prototypes for event checkers
 
 bool Check4Keystroke(void);
-bool Check4BeaconDetected(void);
 bool Check4TapeDetected(void);
 bool Check4CommandAvailable(void);
 

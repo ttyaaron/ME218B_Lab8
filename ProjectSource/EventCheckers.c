@@ -64,41 +64,6 @@ bool Check4Keystroke(void)
 
 /****************************************************************************
  Function
-   Check4BeaconDetected
-
- Parameters
-   None
-
- Returns
-   bool: true if a new beacon event was detected & posted
-
- Description
-   Checks for a low-going transition on the beacon input.
-
- Author
-   Tianyu, 02/03/26
-****************************************************************************/
-bool Check4BeaconDetected(void)
-{
-  static bool LastBeaconState = true;
-  bool CurrentBeaconState = ReadBeaconInputPin();
-
-  if ((CurrentBeaconState == false) && (LastBeaconState == true))
-  {
-    ES_Event_t ThisEvent;
-    ThisEvent.EventType = ES_BEACON_DETECTED;
-    ThisEvent.EventParam = 0;
-    PostMainLogicFSM(ThisEvent);
-    LastBeaconState = CurrentBeaconState;
-    return true;
-  }
-
-  LastBeaconState = CurrentBeaconState;
-  return false;
-}
-
-/****************************************************************************
- Function
    Check4TapeDetected
 
  Parameters

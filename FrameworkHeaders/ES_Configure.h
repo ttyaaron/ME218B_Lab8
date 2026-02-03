@@ -96,11 +96,11 @@
 // These are the definitions for Service 4
 #if NUM_SERVICES > 4
 // the header file with the public function prototypes
-#define SERV_4_HEADER "EncoderService.h"
+#define SERV_4_HEADER "BeaconDetectService.h"
 // the name of the Init function
-#define SERV_4_INIT InitEncoderService
+#define SERV_4_INIT InitBeaconDetectService
 // the name of the run function
-#define SERV_4_RUN RunEncoderService
+#define SERV_4_RUN RunBeaconDetectService
 // How big should this services Queue be?
 #define SERV_4_QUEUE_SIZE 3
 #endif
@@ -264,7 +264,7 @@ typedef enum
   ES_SPEED_CHANGE,          /* signals a speed change for DC motor */
   ES_DUTY_CYCLE_CHANGE,     /* signals a duty cycle change for DC motor */
   ES_DIRECTION_CHANGE,      /* signals a direction change for DC motor */
-  ES_NEW_ENCODER_EDGE,      /* signals a new encoder edge captured */
+  ES_NEW_SIGNAL_EDGE,       /* signals a new signal edge from phototransistor */
   ES_COMMAND_RETRIEVED,     /* signals a new command byte from SPI */
   ES_BEACON_DETECTED,       /* signals a beacon detection */
   ES_TAPE_DETECTED          /* signals a tape detection */
@@ -302,7 +302,7 @@ typedef enum
 
 /****************************************************************************/
 // This is the list of event checking functions
-#define EVENT_CHECK_LIST Check4Keystroke, Check4BeaconDetected, Check4TapeDetected
+#define EVENT_CHECK_LIST Check4Keystroke, Check4TapeDetected
 
 /****************************************************************************/
 // These are the definitions for the post functions to be executed when the
@@ -312,7 +312,7 @@ typedef enum
 // priority in servicing them
 #define TIMER_UNUSED ((pPostFunc)0)
 #define TIMER0_RESP_FUNC PostCommandRetrieveService
-#define TIMER1_RESP_FUNC PostEncoderService
+#define TIMER1_RESP_FUNC PostBeaconDetectService
 #define TIMER2_RESP_FUNC PostMainLogicFSM
 #define TIMER3_RESP_FUNC PostMainLogicFSM
 #define TIMER4_RESP_FUNC PostMainLogicFSM
@@ -337,7 +337,7 @@ typedef enum
 
 #define SERVICE0_TIMER 15
 #define COMMAND_SPI_TIMER 0
-#define PRINT_RPM_TIMER 1
+#define PRINT_FREQUENCY_TIMER 1
 #define SIMPLE_MOVE_TIMER 2
 #define TAPE_SEARCH_TIMER 3
 #define BEACON_ALIGN_TIMER 4
