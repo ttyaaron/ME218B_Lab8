@@ -3,18 +3,109 @@
    CommonDefinitions.c
 
  Revision
-   0.1
+   1.0.0
 
  Description
-   Shared constants source file for Lab 8 (currently header-only).
+   This module contains common utility functions shared across multiple
+   services in the motor control system.
 
  Notes
-   This file is intentionally minimal. Keep shared constants in the header.
+   These functions provide consistent conversion between ADC values,
+   encoder periods, and RPM measurements across all services.
 
  History
  When           Who     What/Why
  -------------- ---     --------
- 02/03/26       Tianyu  Initial creation for Lab 8 shared definitions
+ 01/28/26       Tianyu  Initial creation for Lab 7
 ****************************************************************************/
-
+/*----------------------------- Include Files -----------------------------*/
 #include "CommonDefinitions.h"
+
+/*---------------------------- Module Variables ---------------------------*/
+
+// Lookup table for prescale settings based on desired prescale
+const uint8_t PrescaleLookup[] = {
+  0b000, // 1:1 prescale
+  0b001, // 1:2 prescale
+  0b010, // 1:4 prescale
+  0b011, // 1:8 prescale
+  0b100, // 1:16 prescale
+  0b101, // 1:32 prescale
+  0b110, // 1:64 prescale
+  0b111  // 1:256 prescale
+};
+
+/*------------------------------ Module Code ------------------------------*/
+
+/****************************************************************************
+ Function
+     PeriodToRPM
+
+ Parameters
+     uint32_t period - time between encoder edges in timer ticks
+
+ Returns
+     float - measured RPM
+
+ Description
+     Converts encoder period measurement to RPM. Uses the encoder timer
+     prescale and edges per revolution to calculate actual motor speed.
+
+ Author
+     Tianyu, 01/28/26
+****************************************************************************/
+float PeriodToRPM(uint32_t period)
+{
+  // Prevent division by zero
+  if (period == 0)
+  {
+    return 0.0f;
+  }
+  
+  // Calculate timer clock frequency
+  uint32_t timerClock = PBCLK_FREQ / ENCODER_TIMER_PRESCALE;
+  
+//  DB_printf("timerClock: %d\r\n", timerClock);
+  
+//  DB_printf("period: %d\r\n", period);
+  
+  // DEBUG: Print all values used in calculation
+  
+//  DB_printf("SECONDS_PER_MINUTE: %d\r\n", SECONDS_PER_MINUTE);
+//  DB_printf("IC_ENCODER_EDGES_PER_REV: %d\r\n", IC_ENCODER_EDGES_PER_REV);
+  
+  // Calculate RPM from period
+  // RPM = (timerClock * 60) / (period * edges_per_rev)
+  float rpm = ((float)timerClock * SECONDS_PER_MINUTE) / 
+              ((float)period * IC_ENCODER_EDGES_PER_REV);
+  
+//  DB_printf("RPM: %d\r\n", rpm);
+  
+  return rpm;
+}
+
+/****************************************************************************
+ Function
+     ADToRPM
+
+ Parameters
+     uint16_t adcValue - ADC reading (0-1023)
+
+ Returns
+     float - desired RPM
+
+ Description
+     Converts ADC value to desired RPM setpoint. Maps the full ADC range
+     linearly to the motor's RPM range.
+
+ Author
+     Tianyu, 01/28/26
+****************************************************************************/
+float ADToRPM(uint16_t adcValue)
+{
+  // Map ADC range [0, 1023] to RPM range [0, MAX_RPM]
+  return ((float)adcValue * MAX_RPM) / ADC_MAX_VALUE;
+}
+
+/*------------------------------- Footnotes -------------------------------*/
+/*------------------------------ End of file ------------------------------*/
