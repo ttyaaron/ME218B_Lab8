@@ -1,33 +1,29 @@
 /****************************************************************************
+ Module
+     CommandRetrieveService.h
 
-  Header file for MorseElements Service
-  based on the Gen2 Events and Services Framework
+ Revision
+     0.1
 
- ****************************************************************************/
+ Description
+     Header file for the SPI Command Retrieve Service.
 
-#ifndef MorseElementsService_H
-#define MorseElementsService_H
+ Notes
 
-// Event Definitions
+ History
+ When           Who     What/Why
+ -------------- ---     --------
+ 02/03/26       Tianyu  Initial creation for Lab 8 command retrieval
+*****************************************************************************/
+
+#ifndef CommandRetrieveService_H
+#define CommandRetrieveService_H
+
 #include "ES_Configure.h" /* gets us event definitions */
 #include "ES_Types.h"     /* gets bool type for returns */
 
-// typedefs for the states
-// State definitions for use with the query function
-typedef enum
-{
-  InitMorseElements, CalWaitForRise, CalWaitForFall,
-  EOC_WaitRise, EOC_WaitFall, DecodeWaitFall, DecodeWaitRise
-}MorseElementsState_t;
+bool InitCommandRetrieveService(uint8_t Priority);
+bool PostCommandRetrieveService(ES_Event_t ThisEvent);
+ES_Event_t RunCommandRetrieveService(ES_Event_t ThisEvent);
 
-// Public Function Prototypes
-
-bool InitMorseElementsService(uint8_t Priority);
-bool PostMorseElementsService(ES_Event_t ThisEvent);
-ES_Event_t RunMorseElementsSM(ES_Event_t ThisEvent);
-MorseElementsState_t QueryMorseElementsService(void);
-
-bool CheckMorseEvents(void);
-
-#endif /* MorseElementsService_H */
-
+#endif /* CommandRetrieveService_H */
