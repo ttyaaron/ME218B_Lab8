@@ -33,7 +33,7 @@
 /****************************************************************************/
 // This macro determines that nuber of services that are *actually* used in
 // a particular application. It will vary in value from 1 to MAX_NUM_SERVICES
-#define NUM_SERVICES 4
+#define NUM_SERVICES 5
 
 /****************************************************************************/
 // These are the definitions for Service 0, the lowest priority service.
@@ -57,11 +57,11 @@
 // These are the definitions for Service 1
 #if NUM_SERVICES > 1
 // the header file with the public function prototypes
-#define SERV_1_HEADER "ADService.h"
+#define SERV_1_HEADER "CommandRetrieveService.h"
 // the name of the Init function
-#define SERV_1_INIT InitADService
+#define SERV_1_INIT InitCommandRetrieveService
 // the name of the run function
-#define SERV_1_RUN RunADService
+#define SERV_1_RUN RunCommandRetrieveService
 // How big should this services Queue be?
 #define SERV_1_QUEUE_SIZE 3
 #endif
@@ -70,11 +70,11 @@
 // These are the definitions for Service 2
 #if NUM_SERVICES > 2
 // the header file with the public function prototypes
-#define SERV_2_HEADER "DCMotorService.h"
+#define SERV_2_HEADER "MainLogicFSM.h"
 // the name of the Init function
-#define SERV_2_INIT InitDCMotorService
+#define SERV_2_INIT InitMainLogicFSM
 // the name of the run function
-#define SERV_2_RUN RunDCMotorService
+#define SERV_2_RUN RunMainLogicFSM
 // How big should this services Queue be?
 #define SERV_2_QUEUE_SIZE 3
 #endif
@@ -83,11 +83,11 @@
 // These are the definitions for Service 3
 #if NUM_SERVICES > 3
 // the header file with the public function prototypes
-#define SERV_3_HEADER "EncoderService.h"
+#define SERV_3_HEADER "DCMotorService.h"
 // the name of the Init function
-#define SERV_3_INIT InitEncoderService
+#define SERV_3_INIT InitDCMotorService
 // the name of the run function
-#define SERV_3_RUN RunEncoderService
+#define SERV_3_RUN RunDCMotorService
 // How big should this services Queue be?
 #define SERV_3_QUEUE_SIZE 3
 #endif
@@ -96,11 +96,11 @@
 // These are the definitions for Service 4
 #if NUM_SERVICES > 4
 // the header file with the public function prototypes
-#define SERV_4_HEADER "StepService4.h"
+#define SERV_4_HEADER "EncoderService.h"
 // the name of the Init function
-#define SERV_4_INIT InitStepService4
+#define SERV_4_INIT InitEncoderService
 // the name of the run function
-#define SERV_4_RUN RunStepService4
+#define SERV_4_RUN RunEncoderService
 // How big should this services Queue be?
 #define SERV_4_QUEUE_SIZE 3
 #endif
@@ -261,10 +261,13 @@ typedef enum
   /* User-defined events start here */
   ES_NEW_KEY,               /* signals a new key received from terminal */
   ES_LOCK,
-  ES_UNLOCK,
-  ES_DIR_CHANGE,            /* signals a direction change for stepper motor */
-  ES_SPEED_CHANGED,         /* signals a speed change for DC motor */
-  ES_NEW_ENCODER_EDGE       /* signals a new encoder edge captured */
+  ES_SPEED_CHANGE,          /* signals a speed change for DC motor */
+  ES_DUTY_CYCLE_CHANGE,     /* signals a duty cycle change for DC motor */
+  ES_DIRECTION_CHANGE,      /* signals a direction change for DC motor */
+  ES_NEW_ENCODER_EDGE,      /* signals a new encoder edge captured */
+  ES_COMMAND_RETRIEVED,     /* signals a new command byte from SPI */
+  ES_BEACON_DETECTED,       /* signals a beacon detection */
+  ES_TAPE_DETECTED          /* signals a tape detection */
 }ES_EventType_t;
 
 /****************************************************************************/
@@ -299,7 +302,7 @@ typedef enum
 
 /****************************************************************************/
 // This is the list of event checking functions
-#define EVENT_CHECK_LIST Check4Keystroke, Check4DirectionChange
+#define EVENT_CHECK_LIST Check4Keystroke, Check4BeaconDetected, Check4TapeDetected
 
 /****************************************************************************/
 // These are the definitions for the post functions to be executed when the
@@ -308,11 +311,11 @@ typedef enum
 // Unlike services, any combination of timers may be used and there is no
 // priority in servicing them
 #define TIMER_UNUSED ((pPostFunc)0)
-#define TIMER0_RESP_FUNC PostADService
+#define TIMER0_RESP_FUNC PostCommandRetrieveService
 #define TIMER1_RESP_FUNC PostEncoderService
-#define TIMER2_RESP_FUNC TIMER_UNUSED
-#define TIMER3_RESP_FUNC TIMER_UNUSED
-#define TIMER4_RESP_FUNC TIMER_UNUSED
+#define TIMER2_RESP_FUNC PostMainLogicFSM
+#define TIMER3_RESP_FUNC PostMainLogicFSM
+#define TIMER4_RESP_FUNC PostMainLogicFSM
 #define TIMER5_RESP_FUNC TIMER_UNUSED
 #define TIMER6_RESP_FUNC TIMER_UNUSED
 #define TIMER7_RESP_FUNC TIMER_UNUSED
@@ -333,8 +336,12 @@ typedef enum
 // These symbolic names should be changed to be relevant to your application
 
 #define SERVICE0_TIMER 15
-#define AD_TIMER 0
+#define COMMAND_SPI_TIMER 0
 #define PRINT_RPM_TIMER 1
+#define SIMPLE_MOVE_TIMER 2
+#define TAPE_SEARCH_TIMER 3
+#define BEACON_ALIGN_TIMER 4
+#define AD_TIMER 5
 
 
 #endif /* ES_CONFIGURE_H */

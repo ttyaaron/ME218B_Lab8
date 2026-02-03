@@ -17,9 +17,6 @@
 
 #include "ES_Types.h"
 
-// Public Constants
-#define ADC_MAX_VALUE 1023  // 10-bit ADC maximum value (shared constant)
-
 // Public Function Prototypes
 
 bool InitADService(uint8_t Priority);
