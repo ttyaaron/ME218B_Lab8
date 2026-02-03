@@ -6,8 +6,7 @@
    1.0.1
 
  Description
-   This service generates the waveforms for full-step stepping mode.
-   Full-step mode energizes both coils simultaneously for maximum torque.
+   This service controls two DC motors (left/right) using PWM outputs.
 
  Notes
     When initializing the DC Motor Service:
@@ -57,7 +56,6 @@
 #include "ES_Framework.h"
 #include "ES_Timers.h"
 #include "DCMotorService.h"
-#include "ADService.h"
 #include "CommonDefinitions.h"
 #include "dbprintf.h"
 #include <xc.h>
@@ -83,7 +81,8 @@ static uint16_t MapSpeedToDutyCycle(uint16_t desiredSpeed);
 /*---------------------------- Module Variables ---------------------------*/
 // Module level Priority variable
 static uint8_t MyPriority;
-static uint16_t desiredSpeed;
+static uint16_t DesiredSpeed[2];
+static uint8_t DesiredDirection[2];
 
 /*------------------------------ Module Code ------------------------------*/
 /****************************************************************************
@@ -108,11 +107,16 @@ bool InitDCMotorService(uint8_t Priority)
   ES_Event_t ThisEvent;
 
   MyPriority = Priority;
+  DesiredSpeed[LEFT_MOTOR] = 0;
+  DesiredSpeed[RIGHT_MOTOR] = 0;
+  DesiredDirection[LEFT_MOTOR] = FORWARD;
+  DesiredDirection[RIGHT_MOTOR] = FORWARD;
   
   /********************************************
    Initialization code for DC Motor Control system
    *******************************************/
   // Initialize Output Compare Pins used
+  // TODO: Expand ConfigureDCMotorPins for both motors
   ConfigureDCMotorPins();
 
   // Configure PWM module (includes timer configuration)
@@ -180,41 +184,38 @@ ES_Event_t RunDCMotorService(ES_Event_t ThisEvent)
       break;
       
     case ES_SPEED_CHANGE:
-        ;
-        uint16_t dutyCycle;
-#ifdef ENABLE_POT_AD
-      // Get desiredSpeed from event parameter
-      desiredSpeed = ThisEvent.EventParam;
+    {
+      // Pseudocode:
+      // FOR each motor in Motors[]
+      //   Map desired speed to duty ticks
+      //   Clamp duty ticks to safe range
+      //   IF motor.direction == FORWARD
+      //     Set forward pin HIGH, reverse pin LOW
+      //     Write duty ticks to OCxRS
+      //   ELSE (REVERSE)
+      //     Set forward pin LOW, reverse pin HIGH
+      //     Write duty ticks to OCxRS (or inverted if hardware requires)
+      // END FOR
 
-      // Map the desired speed to duty cycle (with clamping)
-      
-      dutyCycle = MapSpeedToDutyCycle(desiredSpeed);
-#else
-      dutyCycle = INITIAL_DUTY_TICKS;
-#endif
+      uint16_t dutyCycle = MapSpeedToDutyCycle(DesiredSpeed[LEFT_MOTOR]);
 
-      // IF (read from direction I/O pin, and it is LOW)
-      if (DIRECTION_PIN == 0)
+      if (DesiredDirection[LEFT_MOTOR] == FORWARD)
       {
-//          DB_printf("I'm here at I/O 0! \r\n");
-        // Set the other motor control pin to LOW
         MOTOR_REVERSE_PIN = 0;
-        // Write new duty cycle ticks to OCxRS
         OC1RS = dutyCycle;
       }
       else
       {
-//          DB_printf("I'm here at I/O 1! \r\n");
-        // Set the new PWM duty cycle ticks to (PWM period – duty cycle ticks + 1)
-        OC1RS = PWM_PERIOD_TICKS - dutyCycle + 1;
-        // Set the other motor control pin to HIGH
         MOTOR_REVERSE_PIN = 1;
+        OC1RS = PWM_PERIOD_TICKS - dutyCycle + 1;
       }
 
+      // TODO: Add right motor OC module and pins
       break;
+    }
       
-      case ES_DUTY_CYCLE_CHANGE:
-          ;
+    case ES_DUTY_CYCLE_CHANGE:
+    {
       // Get desiredDutyCycleTicks from event parameter
       uint16_t desiredDutyCycleTicks;
       desiredDutyCycleTicks = ThisEvent.EventParam;
@@ -231,10 +232,18 @@ ES_Event_t RunDCMotorService(ES_Event_t ThisEvent)
       
       // Set the other motor control pin to LOW (since bi-directional closed-loop control is not required)
       MOTOR_REVERSE_PIN = 0;
-      
+
       // Write new duty cycle ticks to OCxRS
       OC1RS = desiredDutyCycleTicks;
 
+      // TODO: Apply to right motor output compare
+      break;
+      }
+
+    case ES_DIRECTION_CHANGE:
+      // Pseudocode:
+      // Update direction pins for both motors using DesiredDirection[]
+      // TODO: Apply to left/right motor direction pins
       break;
       
     default:
@@ -242,6 +251,43 @@ ES_Event_t RunDCMotorService(ES_Event_t ThisEvent)
   }
   
   return ReturnEvent;
+}
+
+/****************************************************************************
+ Function
+     MotorCommandWrapper
+
+ Parameters
+     uint16_t speedLeft, speedRight
+     uint8_t dirLeft, dirRight
+
+ Returns
+     None
+
+ Description
+     Writes desired speeds/directions into module variables and posts
+     ES_SPEED_CHANGE and ES_DIRECTION_CHANGE events to DCMotorService.
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+void MotorCommandWrapper(uint16_t speedLeft, uint16_t speedRight,
+                         uint8_t dirLeft, uint8_t dirRight)
+{
+  ES_Event_t ThisEvent;
+
+  DesiredSpeed[LEFT_MOTOR] = speedLeft;
+  DesiredSpeed[RIGHT_MOTOR] = speedRight;
+  DesiredDirection[LEFT_MOTOR] = dirLeft;
+  DesiredDirection[RIGHT_MOTOR] = dirRight;
+
+  ThisEvent.EventType = ES_SPEED_CHANGE;
+  ThisEvent.EventParam = 0;
+  PostDCMotorService(ThisEvent);
+
+  ThisEvent.EventType = ES_DIRECTION_CHANGE;
+  ThisEvent.EventParam = 0;
+  PostDCMotorService(ThisEvent);
 }
 
 /***************************************************************************

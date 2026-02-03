@@ -25,7 +25,7 @@
 
         If |desiredSpeed − lastDesiredSpeed| > SPEED_DEADBAND:
         Update module-level desiredSpeed
-        Post ES_SPEED_CHANGED(desiredSpeed)
+        Post ES_SPEED_CHANGE(desiredSpeed)
         Update lastDesiredSpeed
 
     Restart the ADC sampling timer
@@ -198,16 +198,16 @@ ES_Event_t RunADService(ES_Event_t ThisEvent)
 //        DB_printf("Current Desired Speed is %d\r\n",
 //          CurrentDesiredSpeed);
 
-        // Post a ES_SPEED_CHANGED event with the new desired speed if it changed
+        // Post a ES_SPEED_CHANGE event with the new desired speed if it changed
         int32_t speedDelta = (int32_t)CurrentDesiredSpeed - (int32_t)LastDesiredSpeed;
         if (abs(speedDelta) > SPEED_DEADBAND)
         {
           // Update lastDesiredSpeed
           LastDesiredSpeed = CurrentDesiredSpeed;
           
-          // Post ES_SPEED_CHANGED event
+          // Post ES_SPEED_CHANGE event
           ES_Event_t SpeedChangedEvent;
-          SpeedChangedEvent.EventType = ES_SPEED_CHANGED;
+          SpeedChangedEvent.EventType = ES_SPEED_CHANGE;
           SpeedChangedEvent.EventParam = CurrentDesiredSpeed;
           PostDCMotorService(SpeedChangedEvent);
         }

@@ -1,110 +1,121 @@
 /****************************************************************************
  Module
-   TemplateFSM.c
+   MainLogicFSM.c
 
  Revision
-   1.0.1
+   0.1
 
  Description
-   This is a template file for implementing flat state machines under the
-   Gen2 Events and Services Framework.
+   Main logic state machine for command-driven robot behavior.
 
  Notes
+   States:
+     - Stopped
+     - SimpleMoving
+     - SearchingForTape
+     - AligningWithBeacon
 
  History
  When           Who     What/Why
  -------------- ---     --------
- 01/15/12 11:12 jec      revisions for Gen2 framework
- 11/07/11 11:26 jec      made the queue static
- 10/30/11 17:59 jec      fixed references to CurrentEvent in RunTemplateSM()
- 10/23/11 18:20 jec      began conversion from SMTemplate.c (02/20/07 rev)
+ 02/03/26       Tianyu  Initial creation for Lab 8 main logic
 ****************************************************************************/
+
 /*----------------------------- Include Files -----------------------------*/
-/* include header files for this state machine as well as any machines at the
-   next lower level in the hierarchy that are sub-machines to this machine
-*/
 #include "ES_Configure.h"
 #include "ES_Framework.h"
-#include "TemplateFSM.h"
+#include "ES_Timers.h"
+#include "MainLogicFSM.h"
+#include "DCMotorService.h"
+#include "CommonDefinitions.h"
+#include "Ports.h"
 
 /*----------------------------- Module Defines ----------------------------*/
 
 /*---------------------------- Module Functions ---------------------------*/
-/* prototypes for private functions for this machine.They should be functions
-   relevant to the behavior of this state machine
-*/
+static void RotateCW90(void);
+static void RotateCW45(void);
+static void RotateCCW90(void);
+static void RotateCCW45(void);
+static void DriveForwardHalf(void);
+static void DriveForwardFull(void);
+static void DriveReverseHalf(void);
+static void DriveReverseFull(void);
+static void SearchForTape(void);
+static void AlignWithBeacon(void);
 
 /*---------------------------- Module Variables ---------------------------*/
-// everybody needs a state variable, you may need others as well.
-// type of state variable should match htat of enum in header file
-static TemplateState_t CurrentState;
-
-// with the introduction of Gen2, we need a module level Priority var as well
+static MainLogicState_t CurrentState;
 static uint8_t MyPriority;
 
 /*------------------------------ Module Code ------------------------------*/
 /****************************************************************************
  Function
-     InitTemplateFSM
+     InitMainLogicFSM
 
  Parameters
-     uint8_t : the priorty of this service
+     uint8_t : the priority of this service
 
  Returns
      bool, false if error in initialization, true otherwise
 
  Description
-     Saves away the priority, sets up the initial transition and does any
-     other required initialization for this state machine
- Notes
+     Initializes the main logic state machine.
 
  Author
-     J. Edward Carryer, 10/23/11, 18:55
+     Tianyu, 02/03/26
 ****************************************************************************/
-bool InitTemplateFSM(uint8_t Priority)
+bool InitMainLogicFSM(uint8_t Priority)
 {
   ES_Event_t ThisEvent;
 
   MyPriority = Priority;
-  // put us into the Initial PseudoState
-  CurrentState = InitPState;
-  // post the initial transition event
+
+  /********************************************
+   Initialization code for ports and sensors
+   *******************************************/
+  // TODO: Initialize ports via Ports.c/Ports.h
+  InitBeaconInputPin();
+  InitTapeSensorPin();
+  InitCommandSPIPins();
+
+  CurrentState = Stopped;
+
+  // Stop motors on startup
+  MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+
   ThisEvent.EventType = ES_INIT;
   if (ES_PostToService(MyPriority, ThisEvent) == true)
   {
     return true;
   }
-  else
-  {
-    return false;
-  }
+  return false;
 }
 
 /****************************************************************************
  Function
-     PostTemplateFSM
+     PostMainLogicFSM
 
  Parameters
-     EF_Event_t ThisEvent , the event to post to the queue
+     ES_Event_t ThisEvent , the event to post to the queue
 
  Returns
-     boolean False if the Enqueue operation failed, True otherwise
+     bool, false if the enqueue operation failed, true otherwise
 
  Description
      Posts an event to this state machine's queue
- Notes
 
  Author
-     J. Edward Carryer, 10/23/11, 19:25
+     Tianyu, 02/03/26
 ****************************************************************************/
-bool PostTemplateFSM(ES_Event_t ThisEvent)
+bool PostMainLogicFSM(ES_Event_t ThisEvent)
 {
   return ES_PostToService(MyPriority, ThisEvent);
 }
 
 /****************************************************************************
  Function
-    RunTemplateFSM
+    RunMainLogicFSM
 
  Parameters
    ES_Event_t : the event to process
@@ -113,80 +124,400 @@ bool PostTemplateFSM(ES_Event_t ThisEvent)
    ES_Event_t, ES_NO_EVENT if no error ES_ERROR otherwise
 
  Description
-   add your description here
- Notes
-   uses nested switch/case to implement the machine.
+   State machine for command-driven robot behavior.
+
  Author
-   J. Edward Carryer, 01/15/12, 15:23
+     Tianyu, 02/03/26
 ****************************************************************************/
-ES_Event_t RunTemplateFSM(ES_Event_t ThisEvent)
+ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
 {
   ES_Event_t ReturnEvent;
-  ReturnEvent.EventType = ES_NO_EVENT; // assume no errors
+  ReturnEvent.EventType = ES_NO_EVENT;
 
   switch (CurrentState)
   {
-    case InitPState:        // If current state is initial Psedudo State
-    {
-      if (ThisEvent.EventType == ES_INIT)    // only respond to ES_Init
+    case Stopped:
+      if (ThisEvent.EventType == ES_COMMAND_RETRIEVED)
       {
-        // this is where you would put any actions associated with the
-        // transition from the initial pseudo-state into the actual
-        // initial state
-
-        // now put the machine into the actual initial state
-        CurrentState = UnlockWaiting;
-      }
-    }
-    break;
-
-    case UnlockWaiting:        // If current state is state one
-    {
-      switch (ThisEvent.EventType)
-      {
-        case ES_LOCK:  //If event is event one
-
-        {   // Execute action function for state one : event one
-          CurrentState = Locked;  //Decide what the next state will be
+        switch (ThisEvent.EventParam)
+        {
+          case CMD_STOP:
+            MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+            break;
+          case CMD_ROTATE_CW_90:
+            RotateCW90();
+            CurrentState = SimpleMoving;
+            break;
+          case CMD_ROTATE_CW_45:
+            RotateCW45();
+            CurrentState = SimpleMoving;
+            break;
+          case CMD_ROTATE_CCW_90:
+            RotateCCW90();
+            CurrentState = SimpleMoving;
+            break;
+          case CMD_ROTATE_CCW_45:
+            RotateCCW45();
+            CurrentState = SimpleMoving;
+            break;
+          case CMD_DRIVE_FWD_HALF:
+            DriveForwardHalf();
+            CurrentState = SimpleMoving;
+            break;
+          case CMD_DRIVE_FWD_FULL:
+            DriveForwardFull();
+            CurrentState = SimpleMoving;
+            break;
+          case CMD_DRIVE_REV_HALF:
+            DriveReverseHalf();
+            CurrentState = SimpleMoving;
+            break;
+          case CMD_DRIVE_REV_FULL:
+            DriveReverseFull();
+            CurrentState = SimpleMoving;
+            break;
+          case CMD_ALIGN_BEACON:
+            AlignWithBeacon();
+            CurrentState = AligningWithBeacon;
+            break;
+          case CMD_SEARCH_TAPE:
+            SearchForTape();
+            CurrentState = SearchingForTape;
+            break;
+          default:
+            break;
         }
-        break;
+      }
+      break;
 
-        // repeat cases as required for relevant events
-        default:
-          ;
-      }  // end switch on CurrentEvent
-    }
-    break;
-    // repeat state pattern as required for other states
+    case SimpleMoving:
+      if (ThisEvent.EventType == ES_TIMEOUT &&
+          ThisEvent.EventParam == SIMPLE_MOVE_TIMER)
+      {
+        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        CurrentState = Stopped;
+      }
+      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
+               ThisEvent.EventParam == CMD_STOP)
+      {
+        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        CurrentState = Stopped;
+      }
+      break;
+
+    case SearchingForTape:
+      if (ThisEvent.EventType == ES_TAPE_DETECTED)
+      {
+        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        CurrentState = Stopped;
+      }
+      else if (ThisEvent.EventType == ES_TIMEOUT &&
+               ThisEvent.EventParam == TAPE_SEARCH_TIMER)
+      {
+        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        // TODO: Print("Tape Search Failed")
+        CurrentState = Stopped;
+      }
+      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
+               ThisEvent.EventParam == CMD_STOP)
+      {
+        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        CurrentState = Stopped;
+      }
+      break;
+
+    case AligningWithBeacon:
+      if (ThisEvent.EventType == ES_BEACON_DETECTED)
+      {
+        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        CurrentState = Stopped;
+      }
+      else if (ThisEvent.EventType == ES_TIMEOUT &&
+               ThisEvent.EventParam == BEACON_ALIGN_TIMER)
+      {
+        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        // TODO: Print("Alignment Failed")
+        CurrentState = Stopped;
+      }
+      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
+               ThisEvent.EventParam == CMD_STOP)
+      {
+        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        CurrentState = Stopped;
+      }
+      break;
+
     default:
-      ;
-  }                                   // end switch on Current State
+      break;
+  }
+
   return ReturnEvent;
 }
 
 /****************************************************************************
  Function
-     QueryTemplateSM
+     QueryMainLogicFSM
 
  Parameters
      None
 
  Returns
-     TemplateState_t The current state of the Template state machine
+     MainLogicState_t: the current state of the main logic FSM
 
  Description
-     returns the current state of the Template state machine
- Notes
+     Returns the current state of the main logic FSM
 
  Author
-     J. Edward Carryer, 10/23/11, 19:21
+     Tianyu, 02/03/26
 ****************************************************************************/
-TemplateState_t QueryTemplateFSM(void)
+MainLogicState_t QueryMainLogicFSM(void)
 {
   return CurrentState;
 }
 
-/***************************************************************************
- private functions
- ***************************************************************************/
+/*----------------------------- Helper Functions --------------------------*/
+/****************************************************************************
+ Function
+     RotateCW90
 
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Open-loop 90 degree clockwise rotation.
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+static void RotateCW90(void)
+{
+  // Pseudocode:
+  // MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE)
+  // Initialize SIMPLE_MOVE_TIMER to 6000 ms
+  MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE);
+  ES_Timer_InitTimer(SIMPLE_MOVE_TIMER, SIMPLE_MOVE_90_MS);
+}
+
+/****************************************************************************
+ Function
+     RotateCW45
+
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Open-loop 45 degree clockwise rotation.
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+static void RotateCW45(void)
+{
+  // Pseudocode:
+  // MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE)
+  // Initialize SIMPLE_MOVE_TIMER to 3000 ms
+  MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE);
+  ES_Timer_InitTimer(SIMPLE_MOVE_TIMER, SIMPLE_MOVE_45_MS);
+}
+
+/****************************************************************************
+ Function
+     RotateCCW90
+
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Open-loop 90 degree counter-clockwise rotation.
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+static void RotateCCW90(void)
+{
+  // Pseudocode:
+  // MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD)
+  // Initialize SIMPLE_MOVE_TIMER to 6000 ms
+  MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD);
+  ES_Timer_InitTimer(SIMPLE_MOVE_TIMER, SIMPLE_MOVE_90_MS);
+}
+
+/****************************************************************************
+ Function
+     RotateCCW45
+
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Open-loop 45 degree counter-clockwise rotation.
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+static void RotateCCW45(void)
+{
+  // Pseudocode:
+  // MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD)
+  // Initialize SIMPLE_MOVE_TIMER to 3000 ms
+  MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD);
+  ES_Timer_InitTimer(SIMPLE_MOVE_TIMER, SIMPLE_MOVE_45_MS);
+}
+
+/****************************************************************************
+ Function
+     DriveForwardHalf
+
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Drive forward at half speed (open-loop).
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+static void DriveForwardHalf(void)
+{
+  // Pseudocode:
+  // MotorCommandWrapper(HalfSpeed, HalfSpeed, FORWARD, FORWARD)
+  // Optionally set SIMPLE_MOVE_TIMER
+  MotorCommandWrapper(HalfSpeed, HalfSpeed, FORWARD, FORWARD);
+}
+
+/****************************************************************************
+ Function
+     DriveForwardFull
+
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Drive forward at full speed (open-loop).
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+static void DriveForwardFull(void)
+{
+  // Pseudocode:
+  // MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, FORWARD)
+  // Optionally set SIMPLE_MOVE_TIMER
+  MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, FORWARD);
+}
+
+/****************************************************************************
+ Function
+     DriveReverseHalf
+
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Drive reverse at half speed (open-loop).
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+static void DriveReverseHalf(void)
+{
+  // Pseudocode:
+  // MotorCommandWrapper(HalfSpeed, HalfSpeed, REVERSE, REVERSE)
+  // Optionally set SIMPLE_MOVE_TIMER
+  MotorCommandWrapper(HalfSpeed, HalfSpeed, REVERSE, REVERSE);
+}
+
+/****************************************************************************
+ Function
+     DriveReverseFull
+
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Drive reverse at full speed (open-loop).
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+static void DriveReverseFull(void)
+{
+  // Pseudocode:
+  // MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, REVERSE)
+  // Optionally set SIMPLE_MOVE_TIMER
+  MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, REVERSE);
+}
+
+/****************************************************************************
+ Function
+     SearchForTape
+
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Drive forward until tape detected or timeout.
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+static void SearchForTape(void)
+{
+  // Pseudocode:
+  // MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, FORWARD)
+  // Initialize TAPE_SEARCH_TIMER
+  MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, FORWARD);
+  ES_Timer_InitTimer(TAPE_SEARCH_TIMER, TAPE_SEARCH_MS);
+}
+
+/****************************************************************************
+ Function
+     AlignWithBeacon
+
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Spin until beacon detected or timeout.
+
+ Author
+     Tianyu, 02/03/26
+****************************************************************************/
+static void AlignWithBeacon(void)
+{
+  // Pseudocode:
+  // MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE)
+  // Initialize BEACON_ALIGN_TIMER
+  MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE);
+  ES_Timer_InitTimer(BEACON_ALIGN_TIMER, BEACON_ALIGN_MS);
+}

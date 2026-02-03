@@ -1,0 +1,47 @@
+/****************************************************************************
+ Module
+   CommandRetrieveService_Pseudocode.txt
+
+ Revision
+   0.2
+
+ Description
+   Pseudocode for SPI command retrieval and posting command events.
+
+ Notes
+   CommandGenerator is an SPI follower and SPI32 is the leader.
+   Query behavior:
+   - When a new command is ready, the next query returns 0xFF.
+   - The query following that 0xFF returns the new command byte.
+   - Subsequent queries return the same command byte until a new command arrives.
+   SPI service should post ES_COMMAND_RETRIEVED(commandByte) to MainLogicService
+   when a valid command byte is received after a 0xFF flag.
+
+   Event
+   ES_COMMAND_RETRIEVED(commandByte)
+
+   InitCommandRetrieveService
+       Configure SPI peripheral (mode, clock, chip select)
+       Initialize command queue/buffer if needed
+
+   RunCommandRetrieveService
+       Static variable: SawNewCommandFlag = false
+       On ES_TIMEOUT(SPI_POLL_TIMER) OR SPI_RX_READY interrupt
+           Read byte from SPI (leader initiates query)
+           IF byte == 0xFF
+               SawNewCommandFlag = true
+           ELSE IF SawNewCommandFlag == true
+               IF byte is valid command
+                   Post ES_COMMAND_RETRIEVED(commandByte) to MainLogicService
+               ELSE
+                   Ignore or log invalid command
+               SawNewCommandFlag = false
+           ELSE
+               Ignore (repeated old command value)
+           Restart SPI_POLL_TIMER (if polling)
+
+ History
+ When           Who     What/Why
+ -------------- ---     --------
+ 02/03/26       Tianyu  SPI command retrieval pseudocode
+****************************************************************************/
