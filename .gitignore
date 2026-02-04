@@ -1,0 +1,6 @@
+#Remove unnecessary build files
+.generated_files/
+build/
+
+#Remove unncessary debug files
+debug/
