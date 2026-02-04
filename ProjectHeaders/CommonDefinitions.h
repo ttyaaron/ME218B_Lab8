@@ -63,6 +63,37 @@ extern const uint8_t PrescaleLookup[];
 
 #define TIMING_PIN_LAT LATBbits.LATB15
 
+// Motor Indexes
+#define MOTOR_LEFT 0
+#define MOTOR_RIGHT 1
+
+// Directions
+#define FORWARD 0
+#define REVERSE 1
+
+// Command Bytes
+#define CMD_STOP 0x00
+#define CMD_ROTATE_CW_90 0x02
+#define CMD_ROTATE_CW_45 0x03
+#define CMD_ROTATE_CCW_90 0x04
+#define CMD_ROTATE_CCW_45 0x05
+#define CMD_FORWARD_HALF 0x08
+#define CMD_FORWARD_FULL 0x09
+#define CMD_REVERSE_HALF 0x10
+#define CMD_REVERSE_FULL 0x11
+#define CMD_ALIGN_BEACON 0x20
+#define CMD_FORWARD_TAPE 0x40
+
+// Speed Levels (duty cycle ticks)
+#define HALF_SPEED (DUTY_MAX_TICKS / 2)   // 50% duty cycle
+#define FULL_SPEED DUTY_MAX_TICKS          // 100% duty cycle
+
+// Timer Durations (ms)
+#define SIMPLE_MOVE_90_MS 6000
+#define SIMPLE_MOVE_45_MS 3000
+#define BEACON_ALIGN_MS 5000
+#define TAPE_SEARCH_MS 5000
+
 /*---------------------------- Public Functions ---------------------------*/
 
 /****************************************************************************
