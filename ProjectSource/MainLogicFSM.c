@@ -29,6 +29,7 @@
 #include "DCMotorService.h"
 #include "CommonDefinitions.h"
 #include "Ports.h"
+#include "dbprintf.h"
 
 /*----------------------------- Module Defines ----------------------------*/
 
@@ -192,13 +193,13 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
 
     case SimpleMoving:
       if (ThisEvent.EventType == ES_TIMEOUT &&
-          ThisEvent.EventParam == SIMPLE_MOVE_TIMER)
+          ThisEvent.EventParam == SIMPLE_MOVE_TIMER) // movement timer expired after a set amount of time
       {
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
       }
       else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
-               ThisEvent.EventParam == CMD_STOP)
+               ThisEvent.EventParam == CMD_STOP) // stop command received while moving
       {
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
@@ -206,20 +207,21 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
       break;
 
     case SearchingForTape:
-      if (ThisEvent.EventType == ES_TAPE_DETECTED)
+      if (ThisEvent.EventType == ES_TAPE_DETECTED) // detected tape
       {
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
       }
       else if (ThisEvent.EventType == ES_TIMEOUT &&
-               ThisEvent.EventParam == TAPE_SEARCH_TIMER)
+               ThisEvent.EventParam == TAPE_SEARCH_TIMER) // stop looking for tape after set time
       {
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         // TODO: Print("Tape Search Failed")
+        DB_printf("Tape Search Failed: Timeout");
         CurrentState = Stopped;
       }
       else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
-               ThisEvent.EventParam == CMD_STOP)
+               ThisEvent.EventParam == CMD_STOP)    // stop command received while searching for tape
       {
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
@@ -227,20 +229,21 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
       break;
 
     case AligningWithBeacon:
-      if (ThisEvent.EventType == ES_BEACON_DETECTED)
+      if (ThisEvent.EventType == ES_BEACON_DETECTED) // found direction of beacon, move forward
       {
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
       }
       else if (ThisEvent.EventType == ES_TIMEOUT &&
-               ThisEvent.EventParam == BEACON_ALIGN_TIMER)
+               ThisEvent.EventParam == BEACON_ALIGN_TIMER) // set time passed, stop aligning towards beacon
       {
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         // TODO: Print("Alignment Failed")
+        DB_printf("Beacon Search Failed: Timeout");
         CurrentState = Stopped;
       }
       else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
-               ThisEvent.EventParam == CMD_STOP)
+               ThisEvent.EventParam == CMD_STOP) // stop command received while aligning for beacon
       {
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
@@ -372,7 +375,7 @@ static void RotateCCW45(void)
   // Pseudocode:
   // MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD)
   // Initialize SIMPLE_MOVE_TIMER to 3000 ms
-  MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD);
+  MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD); 
   ES_Timer_InitTimer(SIMPLE_MOVE_TIMER, SIMPLE_MOVE_45_MS);
 }
 

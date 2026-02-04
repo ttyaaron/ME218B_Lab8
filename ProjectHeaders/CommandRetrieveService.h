@@ -22,6 +22,7 @@
 #include "ES_Configure.h" /* gets us event definitions */
 #include "ES_Types.h"     /* gets bool type for returns */
 
+
 bool InitCommandRetrieveService(uint8_t Priority);
 bool PostCommandRetrieveService(ES_Event_t ThisEvent);
 ES_Event_t RunCommandRetrieveService(ES_Event_t ThisEvent);
