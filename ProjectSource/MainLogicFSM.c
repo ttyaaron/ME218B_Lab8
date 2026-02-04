@@ -178,7 +178,17 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
             CurrentState = SimpleMoving;
             break;
           case CMD_ALIGN_BEACON:
-            AlignWithBeacon();
+            // If already HIGH, the ES_BEACON_DETECTED event will be posted immediately
+            if( ReadBeaconInputPin() == true ) {
+              ES_Event_t BeaconEvent;
+              BeaconEvent.EventType = ES_BEACON_DETECTED;
+              BeaconEvent.EventParam = 0;
+              PostMainLogicFSM(BeaconEvent);
+            }
+            else{
+              // If not detected, act to look for beacon signal
+              AlignWithBeacon();
+            }
             CurrentState = AligningWithBeacon;
             break;
           case CMD_SEARCH_TAPE:

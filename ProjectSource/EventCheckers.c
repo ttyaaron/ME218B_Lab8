@@ -119,3 +119,39 @@ bool Check4CommandAvailable(void)
   // TODO: If moving command retrieval into an event checker, implement here.
   return false;
 }
+
+/****************************************************************************
+ Function
+   Check4BeaconDetected
+
+ Parameters
+   None
+
+ Returns
+   bool: true if IR input is HIGH
+
+ Description
+   Beaon event checker. The IR beacon sensor is active HIGH.
+
+ Author
+   Tianyu, 02/03/26
+****************************************************************************/
+bool Check4BeaconDetected(void)
+{
+  static bool LastBeaconState = false;
+  bool CurrentBeaconState = ReadBeaconInputPin();
+
+  if ((CurrentBeaconState == true) && (LastBeaconState == false))
+  {
+    ES_Event_t ThisEvent;
+    ThisEvent.EventType = ES_BEACON_DETECTED;
+    ThisEvent.EventParam = 0;
+    PostMainLogicFSM(ThisEvent);
+    LastBeaconState = CurrentBeaconState;
+    return true;
+  }
+
+  LastBeaconState = CurrentBeaconState;
+  return false;
+}
+

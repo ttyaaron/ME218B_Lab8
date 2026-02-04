@@ -38,7 +38,9 @@
 ****************************************************************************/
 void InitBeaconInputPin(void)
 {
-  // TODO: Configure the beacon input pin (TRIS/ANSEL)
+  // Configure the beacon input pin (TRIS/ANSEL)
+  TRISBbits.TRISB2 = 1;   // Set as input
+  ANSELBbits.ANSB2 = 0;   // Set as digital
 }
 
 /****************************************************************************
@@ -59,7 +61,10 @@ void InitBeaconInputPin(void)
 ****************************************************************************/
 bool ReadBeaconInputPin(void)
 {
-  // TODO: Return the beacon input pin state
+  // Return the beacon input pin state
+  if (PORTBbits.RB2 == 1) {
+    return true;
+  }
   return false;
 }
 
