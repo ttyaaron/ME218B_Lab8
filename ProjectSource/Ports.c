@@ -19,6 +19,7 @@
 ****************************************************************************/
 
 #include "Ports.h"
+#include "CommonDefinitions.h"
 
 /****************************************************************************
  Function
@@ -130,4 +131,28 @@ bool ReadTapeSensorPin(void)
 void InitCommandSPIPins(void)
 {
   // TODO: Configure SPI pins for leader mode (SCK, MOSI, MISO, CS)
+}
+
+/****************************************************************************
+ Function
+     InitDebugOutputPin
+
+ Parameters
+     None
+
+ Returns
+     None
+
+ Description
+     Initializes the pin used for debugging
+
+ Author
+     Tianyu, 02/04/26
+****************************************************************************/
+void InitDebugOutputPin(void)
+{
+  // 
+  DEBUG_OUTPUT_PIN_TRIS = 0; // Output
+  DEBUG_OUTPUT_PIN_LAT = 0;  // Initialize low
+  DEBUG_OUTPUT_PIN_ANSEL = 0; // Disable analog functionw
 }

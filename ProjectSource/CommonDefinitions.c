@@ -36,8 +36,8 @@
    RIGHT_MOTOR = 1
 
    Speed Levels (duty ticks or normalized units)
-   HalfSpeed
-   FullSpeed
+   HALF_SPEED
+   FULL_SPEED
 
    Timer Durations (ms)
    SIMPLE_MOVE_90_MS = 6000

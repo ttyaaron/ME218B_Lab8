@@ -31,4 +31,6 @@ bool ReadTapeSensorPin(void);
 
 void InitCommandSPIPins(void);
 
+void InitDebugOutputPin(void);
+
 #endif /* Ports_H */

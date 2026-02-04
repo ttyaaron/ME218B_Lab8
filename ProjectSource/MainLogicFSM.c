@@ -28,6 +28,7 @@
 #include "MainLogicFSM.h"
 #include "DCMotorService.h"
 #include "CommonDefinitions.h"
+#include "dbprintf.h"
 #include "Ports.h"
 #include "dbprintf.h"
 
@@ -79,6 +80,7 @@ bool InitMainLogicFSM(uint8_t Priority)
   InitBeaconInputPin();
   InitTapeSensorPin();
   InitCommandSPIPins();
+  InitDebugOutputPin();
 
   CurrentState = Stopped;
 
@@ -134,6 +136,8 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
 {
   ES_Event_t ReturnEvent;
   ReturnEvent.EventType = ES_NO_EVENT;
+  
+  DB_printf("Current State is %d \r\n", CurrentState);
 
   switch (CurrentState)
   {
@@ -308,9 +312,9 @@ MainLogicState_t QueryMainLogicFSM(void)
 static void RotateCW90(void)
 {
   // Pseudocode:
-  // MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE)
+  // MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, REVERSE)
   // Initialize SIMPLE_MOVE_TIMER to 6000 ms
-  MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE);
+  MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, REVERSE);
   ES_Timer_InitTimer(SIMPLE_MOVE_TIMER, SIMPLE_MOVE_90_MS);
 }
 
@@ -333,9 +337,9 @@ static void RotateCW90(void)
 static void RotateCW45(void)
 {
   // Pseudocode:
-  // MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE)
+  // MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, REVERSE)
   // Initialize SIMPLE_MOVE_TIMER to 3000 ms
-  MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE);
+  MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, REVERSE);
   ES_Timer_InitTimer(SIMPLE_MOVE_TIMER, SIMPLE_MOVE_45_MS);
 }
 
@@ -358,9 +362,9 @@ static void RotateCW45(void)
 static void RotateCCW90(void)
 {
   // Pseudocode:
-  // MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD)
+  // MotorCommandWrapper(FULL_SPEED, FULL_SPEED, REVERSE, FORWARD)
   // Initialize SIMPLE_MOVE_TIMER to 6000 ms
-  MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD);
+  MotorCommandWrapper(FULL_SPEED, FULL_SPEED, REVERSE, FORWARD);
   ES_Timer_InitTimer(SIMPLE_MOVE_TIMER, SIMPLE_MOVE_90_MS);
 }
 
@@ -383,9 +387,9 @@ static void RotateCCW90(void)
 static void RotateCCW45(void)
 {
   // Pseudocode:
-  // MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD)
+  // MotorCommandWrapper(FULL_SPEED, FULL_SPEED, REVERSE, FORWARD)
   // Initialize SIMPLE_MOVE_TIMER to 3000 ms
-  MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD); 
+  MotorCommandWrapper(FULL_SPEED, FULL_SPEED, REVERSE, FORWARD); 
   ES_Timer_InitTimer(SIMPLE_MOVE_TIMER, SIMPLE_MOVE_45_MS);
 }
 
@@ -408,9 +412,9 @@ static void RotateCCW45(void)
 static void DriveForwardHalf(void)
 {
   // Pseudocode:
-  // MotorCommandWrapper(HalfSpeed, HalfSpeed, FORWARD, FORWARD)
+  // MotorCommandWrapper(HALF_SPEED, HALF_SPEED, FORWARD, FORWARD)
   // Optionally set SIMPLE_MOVE_TIMER
-  MotorCommandWrapper(HalfSpeed, HalfSpeed, FORWARD, FORWARD);
+  MotorCommandWrapper(HALF_SPEED, HALF_SPEED, FORWARD, FORWARD);
 }
 
 /****************************************************************************
@@ -432,9 +436,9 @@ static void DriveForwardHalf(void)
 static void DriveForwardFull(void)
 {
   // Pseudocode:
-  // MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, FORWARD)
+  // MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, FORWARD)
   // Optionally set SIMPLE_MOVE_TIMER
-  MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, FORWARD);
+  MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, FORWARD);
 }
 
 /****************************************************************************
@@ -456,9 +460,9 @@ static void DriveForwardFull(void)
 static void DriveReverseHalf(void)
 {
   // Pseudocode:
-  // MotorCommandWrapper(HalfSpeed, HalfSpeed, REVERSE, REVERSE)
+  // MotorCommandWrapper(HALF_SPEED, HALF_SPEED, REVERSE, REVERSE)
   // Optionally set SIMPLE_MOVE_TIMER
-  MotorCommandWrapper(HalfSpeed, HalfSpeed, REVERSE, REVERSE);
+  MotorCommandWrapper(HALF_SPEED, HALF_SPEED, REVERSE, REVERSE);
 }
 
 /****************************************************************************
@@ -480,9 +484,9 @@ static void DriveReverseHalf(void)
 static void DriveReverseFull(void)
 {
   // Pseudocode:
-  // MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, REVERSE)
+  // MotorCommandWrapper(FULL_SPEED, FULL_SPEED, REVERSE, REVERSE)
   // Optionally set SIMPLE_MOVE_TIMER
-  MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, REVERSE);
+  MotorCommandWrapper(FULL_SPEED, FULL_SPEED, REVERSE, REVERSE);
 }
 
 /****************************************************************************
@@ -504,9 +508,9 @@ static void DriveReverseFull(void)
 static void SearchForTape(void)
 {
   // Pseudocode:
-  // MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, FORWARD)
+  // MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, FORWARD)
   // Initialize TAPE_SEARCH_TIMER
-  MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, FORWARD);
+  MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, FORWARD);
   ES_Timer_InitTimer(TAPE_SEARCH_TIMER, TAPE_SEARCH_MS);
 }
 
@@ -529,8 +533,8 @@ static void SearchForTape(void)
 static void AlignWithBeacon(void)
 {
   // Pseudocode:
-  // MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE)
+  // MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, REVERSE)
   // Initialize BEACON_ALIGN_TIMER
-  MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE);
+  MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, REVERSE);
   ES_Timer_InitTimer(BEACON_ALIGN_TIMER, BEACON_ALIGN_MS);
 }

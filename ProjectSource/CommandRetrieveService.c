@@ -40,8 +40,6 @@
 #define SPI_POLL_INTERVAL_MS 10
 SPI_Module_t Module = SPI_SPI1;
 
-const uint8_t validCommandBytes[11] = {0x00, 0x02, 0x03, 0x04, 0x05, 0x08, 0x09, 0x10, 0x11, 0x20, 0x40}; 
-
 /*---------------------------- Module Functions ---------------------------*/
 static uint8_t ReadSPICommandByte(void);
 static bool IsValidCommandByte(uint8_t commandByte);

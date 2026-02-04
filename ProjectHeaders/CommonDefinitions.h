@@ -35,6 +35,24 @@ typedef enum {
   PRESCALE_256
 } Prescale_t;
 
+typedef enum
+{
+    CMD_STOP = 0x00,
+    CMD_ROTATE_CW_90 = 0x02,
+    CMD_ROTATE_CW_45 = 0x03,
+    CMD_ROTATE_CCW_90 = 0x04,
+    CMD_ROTATE_CCW_45 = 0x05,
+    CMD_DRIVE_FWD_HALF = 0x08,
+    CMD_DRIVE_FWD_FULL = 0x09,
+    CMD_DRIVE_REV_HALF = 0x10,
+    CMD_DRIVE_REV_FULL = 0x11,
+    CMD_ALIGN_BEACON = 0x20,
+    CMD_SEARCH_TAPE = 0x40
+    
+} Command_t;
+
+extern const uint8_t validCommandBytes[11];
+
 // Prescale lookup table (maps enum to hardware register bits)
 extern const uint8_t PrescaleLookup[];
 
@@ -64,25 +82,12 @@ extern const uint8_t PrescaleLookup[];
 #define TIMING_PIN_LAT LATBbits.LATB15
 
 // Motor Indexes
-#define MOTOR_LEFT 0
-#define MOTOR_RIGHT 1
+#define LEFT_MOTOR 0
+#define RIGHT_MOTOR 1
 
 // Directions
 #define FORWARD 0
 #define REVERSE 1
-
-// Command Bytes
-#define CMD_STOP 0x00
-#define CMD_ROTATE_CW_90 0x02
-#define CMD_ROTATE_CW_45 0x03
-#define CMD_ROTATE_CCW_90 0x04
-#define CMD_ROTATE_CCW_45 0x05
-#define CMD_FORWARD_HALF 0x08
-#define CMD_FORWARD_FULL 0x09
-#define CMD_REVERSE_HALF 0x10
-#define CMD_REVERSE_FULL 0x11
-#define CMD_ALIGN_BEACON 0x20
-#define CMD_FORWARD_TAPE 0x40
 
 // Speed Levels (duty cycle ticks)
 #define HALF_SPEED (DUTY_MAX_TICKS / 2)   // 50% duty cycle
@@ -93,6 +98,12 @@ extern const uint8_t PrescaleLookup[];
 #define SIMPLE_MOVE_45_MS 3000
 #define BEACON_ALIGN_MS 5000
 #define TAPE_SEARCH_MS 5000
+
+// Debug Pin
+#define DEBUG_OUTPUT_PIN_LAT LATBbits.LATB15
+#define DEBUG_OUTPUT_PIN_TRIS TRISBbits.TRISB15
+#define DEBUG_OUTPUT_PIN_ANSEL ANSELBbits.ANSB15
+
 
 /*---------------------------- Public Functions ---------------------------*/
 

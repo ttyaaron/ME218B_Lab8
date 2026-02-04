@@ -104,43 +104,43 @@
 
    SimpleMoves helpers (open-loop)
    RotateCW90()
-       MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE)
+       MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, REVERSE)
        Initialize SIMPLE_MOVE_TIMER to 6000 ms
 
    RotateCW45()
-       MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE)
+       MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, REVERSE)
        Initialize SIMPLE_MOVE_TIMER to 3000 ms
 
    RotateCCW90()
-       MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD)
+       MotorCommandWrapper(FULL_SPEED, FULL_SPEED, REVERSE, FORWARD)
        Initialize SIMPLE_MOVE_TIMER to 6000 ms
 
    RotateCCW45()
-       MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, FORWARD)
+       MotorCommandWrapper(FULL_SPEED, FULL_SPEED, REVERSE, FORWARD)
        Initialize SIMPLE_MOVE_TIMER to 3000 ms
 
    DriveForwardHalf()
-       MotorCommandWrapper(HalfSpeed, HalfSpeed, FORWARD, FORWARD)
+       MotorCommandWrapper(HALF_SPEED, HALF_SPEED, FORWARD, FORWARD)
        Initialize SIMPLE_MOVE_TIMER to 1000 ms (optional: remove for continuous)
 
    DriveForwardFull()
-       MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, FORWARD)
+       MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, FORWARD)
        Initialize SIMPLE_MOVE_TIMER to 1000 ms (optional: remove for continuous)
 
    DriveReverseHalf()
-       MotorCommandWrapper(HalfSpeed, HalfSpeed, REVERSE, REVERSE)
+       MotorCommandWrapper(HALF_SPEED, HALF_SPEED, REVERSE, REVERSE)
        Initialize SIMPLE_MOVE_TIMER to 1000 ms (optional: remove for continuous)
 
    DriveReverseFull()
-       MotorCommandWrapper(FullSpeed, FullSpeed, REVERSE, REVERSE)
+       MotorCommandWrapper(FULL_SPEED, FULL_SPEED, REVERSE, REVERSE)
        Initialize SIMPLE_MOVE_TIMER to 1000 ms (optional: remove for continuous)
 
    SearchForTape()
-       MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, FORWARD)
+       MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, FORWARD)
        Initialize TAPE_SEARCH_TIMER
 
    AlignWithBeacon()
-       MotorCommandWrapper(FullSpeed, FullSpeed, FORWARD, REVERSE)
+       MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, REVERSE)
        Initialize BEACON_ALIGN_TIMER
 
  History

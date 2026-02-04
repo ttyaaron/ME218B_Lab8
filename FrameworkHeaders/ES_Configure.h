@@ -33,7 +33,7 @@
 /****************************************************************************/
 // This macro determines that nuber of services that are *actually* used in
 // a particular application. It will vary in value from 1 to MAX_NUM_SERVICES
-#define NUM_SERVICES 5
+#define NUM_SERVICES 4
 
 /****************************************************************************/
 // These are the definitions for Service 0, the lowest priority service.
@@ -312,7 +312,8 @@ typedef enum
 // priority in servicing them
 #define TIMER_UNUSED ((pPostFunc)0)
 #define TIMER0_RESP_FUNC PostCommandRetrieveService
-#define TIMER1_RESP_FUNC PostBeaconDetectService
+// #define TIMER1_RESP_FUNC PostBeaconDetectService
+#define TIMER1_RESP_FUNC TIMER_UNUSED
 #define TIMER2_RESP_FUNC PostMainLogicFSM
 #define TIMER3_RESP_FUNC PostMainLogicFSM
 #define TIMER4_RESP_FUNC PostMainLogicFSM
@@ -337,7 +338,7 @@ typedef enum
 
 #define SERVICE0_TIMER 15
 #define COMMAND_SPI_TIMER 0
-#define PRINT_FREQUENCY_TIMER 1
+// #define PRINT_FREQUENCY_TIMER 1
 #define SIMPLE_MOVE_TIMER 2
 #define TAPE_SEARCH_TIMER 3
 #define BEACON_ALIGN_TIMER 4

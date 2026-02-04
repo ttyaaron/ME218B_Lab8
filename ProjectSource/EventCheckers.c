@@ -25,6 +25,8 @@
 #include "ES_ServiceHeaders.h"
 #include "ES_Port.h"
 #include "EventCheckers.h"
+#include "CommonDefinitions.h"
+#include "dbprintf.h"
 #include "Ports.h"
 
 /*------------------------------ Module Code ------------------------------*/
@@ -134,7 +136,7 @@ bool Check4CommandAvailable(void)
    Beaon event checker. The IR beacon sensor is active HIGH.
 
  Author
-   Tianyu, 02/03/26
+   Tianyu, 02/04/26
 ****************************************************************************/
 bool Check4BeaconDetected(void)
 {
@@ -143,11 +145,14 @@ bool Check4BeaconDetected(void)
 
   if ((CurrentBeaconState == true) && (LastBeaconState == false))
   {
+    DEBUG_OUTPUT_PIN_LAT = 1;
     ES_Event_t ThisEvent;
     ThisEvent.EventType = ES_BEACON_DETECTED;
     ThisEvent.EventParam = 0;
     PostMainLogicFSM(ThisEvent);
     LastBeaconState = CurrentBeaconState;
+    printf("Posting ES_BEACON_DETECTED event.\r\n");
+    DEBUG_OUTPUT_PIN_LAT = 0;
     return true;
   }
 
