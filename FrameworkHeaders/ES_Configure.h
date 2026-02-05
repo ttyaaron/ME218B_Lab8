@@ -261,9 +261,7 @@ typedef enum
   /* User-defined events start here */
   ES_NEW_KEY,               /* signals a new key received from terminal */
   ES_LOCK,
-  ES_SPEED_CHANGE,          /* signals a speed change for DC motor */
-  ES_DUTY_CYCLE_CHANGE,     /* signals a duty cycle change for DC motor */
-  ES_DIRECTION_CHANGE,      /* signals a direction change for DC motor */
+  ES_MOTOR_ACTION_CHANGE,          /* signals a speed change and direction change for DC motor */
   ES_NEW_SIGNAL_EDGE,       /* signals a new signal edge from phototransistor */
   ES_COMMAND_RETRIEVED,     /* signals a new command byte from SPI */
   ES_BEACON_DETECTED,       /* signals a beacon detection */

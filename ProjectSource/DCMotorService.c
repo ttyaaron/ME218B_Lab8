@@ -26,7 +26,7 @@
     Configure the Output Compare module for one of two PWM Operation modes by writing to the Output Compare mode bits, OCM<2:0> (OCxCON<2:0>). Turn ON the Output Compare module
     Turn the timer to the PWM system on.
 
-    On ES_SPEED_CHANGE event:
+    On ES_MOTOR_ACTION_CHANGE event:
         Get desiredSpeed from event parameter
     Map the desired speed to duty cycle ticks
     IF (read from direction I/O pin, and it is LOW)
@@ -37,11 +37,6 @@
     Clamp duty cycle ticks to safe range
     Write new duty cycle ticks to OCxRS
 
-    On ES_DUTY_CYCLE_CHANGE event
-        Get desiredDutyCycleTicks from event parameter
-    Clamp duty cycle ticks to safe range
-    Set the other motor control pin to LOW (since bi-directional closed-loop control is not required)
-    Write new duty cycle ticks to OCxRS
 
 
  History
@@ -63,9 +58,13 @@
 /*----------------------------- Module Defines ----------------------------*/
 
 // Port definitions
-#define MOTOR_FORWARD_PIN   LATBbits.LATB4
-#define MOTOR_REVERSE_PIN   LATBbits.LATB5
+#define MOTOR_FORWARD_PIN_L   LATBbits.LATB4
+#define MOTOR_REVERSE_PIN_L   LATBbits.LATB5
 #define DIRECTION_PIN       PORTBbits.RB8  // Direction input pin
+
+//Right Wheel Port definitions
+#define MOTOR_FORWARD_PIN_R   LATBbits.LATB9
+#define MOTOR_REVERSE_PIN_R   LATBbits.LATB13
 
 // PWM configuration (period defined in CommonDefinitions.h)
 #define INITIAL_DUTY_TICKS 1100  // Initial duty cycle in ticks
@@ -183,7 +182,7 @@ ES_Event_t RunDCMotorService(ES_Event_t ThisEvent)
       // Initialization already done in Init function
       break;
       
-    case ES_SPEED_CHANGE:
+    case ES_MOTOR_ACTION_CHANGE:
     {
       // Pseudocode:
       // FOR each motor in Motors[]
@@ -201,50 +200,29 @@ ES_Event_t RunDCMotorService(ES_Event_t ThisEvent)
 
       if (DesiredDirection[LEFT_MOTOR] == FORWARD)
       {
-        MOTOR_REVERSE_PIN = 0;
+        MOTOR_REVERSE_PIN_L = 0;
         OC1RS = dutyCycle;
       }
       else
       {
-        MOTOR_REVERSE_PIN = 1;
+        MOTOR_REVERSE_PIN_L = 1;
         OC1RS = PWM_PERIOD_TICKS - dutyCycle + 1;
       }
 
-      // TODO: Add right motor OC module and pins
+      // Hardware motor already inversed for right motor, when forward means same current go through left and right motor
+      if (DesiredDirection[RIGHT_MOTOR] == FORWARD)
+      {
+        MOTOR_REVERSE_PIN_R = 0;
+        OC2RS = dutyCycle;
+      }
+      else
+      {
+        MOTOR_REVERSE_PIN_R = 1;
+        OC2RS = PWM_PERIOD_TICKS - dutyCycle + 1;
+      }
+
       break;
     }
-      
-    case ES_DUTY_CYCLE_CHANGE:
-    {
-      // Get desiredDutyCycleTicks from event parameter
-      uint16_t desiredDutyCycleTicks;
-      desiredDutyCycleTicks = ThisEvent.EventParam;
-      
-      // Clamp duty cycle ticks to safe range
-      if (desiredDutyCycleTicks > DUTY_MAX_TICKS)
-      {
-        desiredDutyCycleTicks = DUTY_MAX_TICKS;
-      }
-      else if (desiredDutyCycleTicks < DUTY_MIN_TICKS)
-      {
-        desiredDutyCycleTicks = DUTY_MIN_TICKS;
-      }
-      
-      // Set the other motor control pin to LOW (since bi-directional closed-loop control is not required)
-      MOTOR_REVERSE_PIN = 0;
-
-      // Write new duty cycle ticks to OCxRS
-      OC1RS = desiredDutyCycleTicks;
-
-      // TODO: Apply to right motor output compare
-      break;
-      }
-
-    case ES_DIRECTION_CHANGE:
-      // Pseudocode:
-      // Update direction pins for both motors using DesiredDirection[]
-      // TODO: Apply to left/right motor direction pins
-      break;
       
     default:
       break;
@@ -266,7 +244,7 @@ ES_Event_t RunDCMotorService(ES_Event_t ThisEvent)
 
  Description
      Writes desired speeds/directions into module variables and posts
-     ES_SPEED_CHANGE and ES_DIRECTION_CHANGE events to DCMotorService.
+     ES_MOTOR_ACTION_CHANGE events to DCMotorService.
 
  Author
      Tianyu, 02/03/26
@@ -281,13 +259,10 @@ void MotorCommandWrapper(uint16_t speedLeft, uint16_t speedRight,
   DesiredDirection[LEFT_MOTOR] = dirLeft;
   DesiredDirection[RIGHT_MOTOR] = dirRight;
 
-  ThisEvent.EventType = ES_SPEED_CHANGE;
+  ThisEvent.EventType = ES_MOTOR_ACTION_CHANGE;
   ThisEvent.EventParam = 0;
   PostDCMotorService(ThisEvent);
 
-  ThisEvent.EventType = ES_DIRECTION_CHANGE;
-  ThisEvent.EventParam = 0;
-  PostDCMotorService(ThisEvent);
 }
 
 /***************************************************************************
@@ -350,40 +325,26 @@ static void ConfigurePWM(void)
   ConfigureTimeBase(PRESCALE_2);
   // Keep timer off during configuration to avoid unintended pulses
   T2CONbits.ON = 0;
-  
-  // Step 2: Disable the PWM Output Compare module before configuration
+  // Disable the PWM Output Compare module before configuration
   OC1CONbits.ON = 0;
-  
-  // Step 3: Set the PWM period by writing to the timer period register
+  OC2CONbits.ON = 0;
+
+  // Set the PWM period by writing to the timer period register
   PR2 = PWM_PERIOD_TICKS;
-  
-  // Step 4: Set the PWM duty cycle by reading direction pin
-  // IF (read from direction I/O pin, and it is LOW)
-  if (DIRECTION_PIN == 0)
-  {
-    // Set the PWM duty cycle ticks by writing to the OCxRS register
-    OC1RS = INITIAL_DUTY_TICKS;
-    // Set the other motor control pin to LOW
-    MOTOR_REVERSE_PIN = 0;
-  }
-  else
-  {
-    // Set the PWM duty cycle ticks to (PWM period – duty cycle ticks + 1)
-    OC1RS = PWM_PERIOD_TICKS - INITIAL_DUTY_TICKS + 1;
-    // Set the other motor control pin to HIGH
-    MOTOR_REVERSE_PIN = 1;
-  }
-  
-  // Step 5: Write the OCxR register with the initial duty cycle
-  OC1R = INITIAL_DUTY_TICKS;
-  
-  // Step 6: Configure the Output Compare module for PWM mode
+  // Write the OCxR register with the initial duty cycle
+  OC1RS = INITIAL_DUTY_TICKS;
+  // Configure the Output Compare module for PWM mode
   OC1CONbits.OCM = 0b110; // PWM mode on OCx; Fault pin disabled
-  
-  // Step 7: Turn ON the Output Compare module
+  // Turn ON the Output Compare module
   OC1CONbits.ON = 1;
 
-  // Step 8: Start the timer after PWM configuration is complete
+
+  OC2CONbits.OCM = 0b110;  // PWM Mode
+  OC2CONbits.OCTSEL = 0;   // Also use Timer 2
+  OC2RS = INITIAL_DUTY_TICKS;
+  OC2CONbits.ON = 1;
+
+  // Start the timer after PWM configuration is complete
   TMR2 = 0;       // Clear timer register for clean start
   T2CONbits.ON = 1;
 }
@@ -409,14 +370,19 @@ static void ConfigureDCMotorPins(void)
   // Configure pins as digital outputs (all pins here don't have analog functions)
   TRISBbits.TRISB4 = 0;  // MOTOR_FORWARD as output
   TRISBbits.TRISB5 = 0;  // MOTOR_REVERSE as output
-  TRISBbits.TRISB8 = 1;  // DIRECTION_PIN as input
-  
+  TRISBbits.TRISB9 = 0;  // MOTOR_FORWARD_R as output
+  TRISBbits.TRISB13 = 0;  // MOTOR_REVERSE_R as output
+
   // Initialize all pins to low
-  MOTOR_FORWARD_PIN = 0;
-  MOTOR_REVERSE_PIN = 0;
-  
+  MOTOR_FORWARD_PIN_L = 0;
+  MOTOR_REVERSE_PIN_L = 0;
+  MOTOR_FORWARD_PIN_R = 0;
+  MOTOR_REVERSE_PIN_R = 0;
+
   // Map OC1 output to RB4
   RPB4R = 0b0101;
+  // Map OC2 output to RB9
+  RPB9R = 0b0101;
 }
 
 /****************************************************************************
