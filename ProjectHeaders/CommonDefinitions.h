@@ -94,8 +94,8 @@ extern const uint8_t PrescaleLookup[];
 #define FULL_SPEED DUTY_MAX_TICKS          // 100% duty cycle
 
 // Timer Durations (ms)
-#define SIMPLE_MOVE_90_MS 6000
-#define SIMPLE_MOVE_45_MS 3000
+#define SIMPLE_MOVE_90_MS 1500
+#define SIMPLE_MOVE_45_MS 750
 #define BEACON_ALIGN_MS 5000
 #define TAPE_SEARCH_MS 5000
 

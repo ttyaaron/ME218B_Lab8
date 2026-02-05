@@ -60,10 +60,10 @@
 // Port definitions
 #define MOTOR_FORWARD_PIN_L   LATBbits.LATB4
 #define MOTOR_REVERSE_PIN_L   LATBbits.LATB5
-#define DIRECTION_PIN       PORTBbits.RB8  // Direction input pin
+//#define DIRECTION_PIN       PORTBbits.RB8  // Direction input pin
 
 //Right Wheel Port definitions
-#define MOTOR_FORWARD_PIN_R   LATBbits.LATB9
+#define MOTOR_FORWARD_PIN_R   LATBbits.LATB11
 #define MOTOR_REVERSE_PIN_R   LATBbits.LATB13
 
 // PWM configuration (period defined in CommonDefinitions.h)
@@ -198,27 +198,31 @@ ES_Event_t RunDCMotorService(ES_Event_t ThisEvent)
 
       uint16_t dutyCycle = MapSpeedToDutyCycle(DesiredSpeed[LEFT_MOTOR]);
 
-      if (DesiredDirection[LEFT_MOTOR] == FORWARD)
+      if (DesiredDirection[0] == 0)
       {
         MOTOR_REVERSE_PIN_L = 0;
         OC1RS = dutyCycle;
+        DB_printf("dutyCycle left0:%u\n", dutyCycle);
       }
       else
       {
         MOTOR_REVERSE_PIN_L = 1;
         OC1RS = PWM_PERIOD_TICKS - dutyCycle + 1;
+        DB_printf("dutyCycle left1:%u\n", OC1RS);
       }
 
       // Hardware motor already inversed for right motor, when forward means same current go through left and right motor
-      if (DesiredDirection[RIGHT_MOTOR] == FORWARD)
+      if (DesiredDirection[1] == 0)
       {
         MOTOR_REVERSE_PIN_R = 0;
         OC2RS = dutyCycle;
+        DB_printf("dutyCycle right0:%u\n", dutyCycle);
       }
       else
       {
         MOTOR_REVERSE_PIN_R = 1;
         OC2RS = PWM_PERIOD_TICKS - dutyCycle + 1;
+        DB_printf("dutyCycle right1:%u\n", OC2RS);
       }
 
       break;
@@ -263,6 +267,7 @@ void MotorCommandWrapper(uint16_t speedLeft, uint16_t speedRight,
   ThisEvent.EventParam = 0;
   PostDCMotorService(ThisEvent);
 
+  DB_printf("DesiredSpeed:%u %u, DesiredDirection: %u %u\n", DesiredSpeed[0], DesiredSpeed[1], DesiredDirection[0], DesiredDirection[1]);
 }
 
 /***************************************************************************
@@ -338,7 +343,6 @@ static void ConfigurePWM(void)
   // Turn ON the Output Compare module
   OC1CONbits.ON = 1;
 
-
   OC2CONbits.OCM = 0b110;  // PWM Mode
   OC2CONbits.OCTSEL = 0;   // Also use Timer 2
   OC2RS = INITIAL_DUTY_TICKS;
@@ -370,7 +374,7 @@ static void ConfigureDCMotorPins(void)
   // Configure pins as digital outputs (all pins here don't have analog functions)
   TRISBbits.TRISB4 = 0;  // MOTOR_FORWARD as output
   TRISBbits.TRISB5 = 0;  // MOTOR_REVERSE as output
-  TRISBbits.TRISB9 = 0;  // MOTOR_FORWARD_R as output
+  TRISBbits.TRISB11 = 0;  // MOTOR_FORWARD_R as output
   TRISBbits.TRISB13 = 0;  // MOTOR_REVERSE_R as output
 
   // Initialize all pins to low
@@ -381,8 +385,8 @@ static void ConfigureDCMotorPins(void)
 
   // Map OC1 output to RB4
   RPB4R = 0b0101;
-  // Map OC2 output to RB9
-  RPB9R = 0b0101;
+  // Map OC2 output to RB11
+  RPB11R = 0b0101;
 }
 
 /****************************************************************************

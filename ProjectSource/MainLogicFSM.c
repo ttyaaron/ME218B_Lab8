@@ -150,38 +150,49 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
             MotorCommandWrapper(0, 0, FORWARD, FORWARD);
             break;
           case CMD_ROTATE_CW_90:
+            DB_printf("State: Rotating CW 90 deg\r\n");
+
             RotateCW90();
             CurrentState = SimpleMoving;
             break;
           case CMD_ROTATE_CW_45:
+            DB_printf("State:  Rotating CW 45 deg\r\n");
+
             RotateCW45();
             CurrentState = SimpleMoving;
             break;
           case CMD_ROTATE_CCW_90:
+              DB_printf("State: Rotating CCW 90 deg\r\n");
             RotateCCW90();
             CurrentState = SimpleMoving;
             break;
           case CMD_ROTATE_CCW_45:
+              DB_printf("State: Rotating CCW 45 deg\r\n");
             RotateCCW45();
             CurrentState = SimpleMoving;
             break;
           case CMD_DRIVE_FWD_HALF:
+              DB_printf("State: drive forwards half speed\r\n");
             DriveForwardHalf();
             CurrentState = SimpleMoving;
             break;
           case CMD_DRIVE_FWD_FULL:
+              DB_printf("State: drive forwards full speed\r\n");
             DriveForwardFull();
             CurrentState = SimpleMoving;
             break;
           case CMD_DRIVE_REV_HALF:
+              DB_printf("State: drive reverse half speed\r\n");
             DriveReverseHalf();
             CurrentState = SimpleMoving;
             break;
           case CMD_DRIVE_REV_FULL:
+              DB_printf("State: drive reverse full speed\r\n");
             DriveReverseFull();
             CurrentState = SimpleMoving;
             break;
           case CMD_ALIGN_BEACON:
+              DB_printf("State: aligning with beacon\r\n");
             // If already HIGH, the ES_BEACON_DETECTED event will be posted immediately
             if( ReadBeaconInputPin() == true ) {
               ES_Event_t BeaconEvent;
@@ -196,6 +207,7 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
             CurrentState = AligningWithBeacon;
             break;
           case CMD_SEARCH_TAPE:
+              DB_printf("State: searching for tape \r\n");
             // If already HIGH, the ES_TAPE_DETECTED event will be posted immediately
             if( ReadTapeSensorPin() == true ) {
               ES_Event_t TapeEvent;
@@ -219,12 +231,13 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
       if (ThisEvent.EventType == ES_TIMEOUT &&
           ThisEvent.EventParam == SIMPLE_MOVE_TIMER) // movement timer expired after a set amount of time
       {
+          DB_printf("Motor Timeout Received while moving\r\n");
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
       }
-      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
-               ThisEvent.EventParam == CMD_STOP) // stop command received while moving
+      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED) // stop command received while moving
       {
+          DB_printf("Stopped command received while moving\r\n");
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
       }
@@ -233,6 +246,7 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
     case SearchingForTape:
       if (ThisEvent.EventType == ES_TAPE_DETECTED) // detected tape
       {
+          DB_printf("Tape detected\r\n");
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
       }
@@ -246,6 +260,7 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
       else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
                ThisEvent.EventParam == CMD_STOP)    // stop command received while searching for tape
       {
+          DB_printf("Motor Timeout Received while searching for tape\r\n");
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
       }
@@ -254,7 +269,8 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
     case AligningWithBeacon:
       if (ThisEvent.EventType == ES_BEACON_DETECTED) // found direction of beacon, move forward
       {
-        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+          DB_printf("Found beacon, moving forward\r\n");
+        MotorCommandWrapper(0, 0, FORWARD, FORWARD); // change speed
         CurrentState = Stopped;
       }
       else if (ThisEvent.EventType == ES_TIMEOUT &&
@@ -267,6 +283,7 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
       else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
                ThisEvent.EventParam == CMD_STOP) // stop command received while aligning for beacon
       {
+          DB_printf("Stop command received while aligning with beacon\r\n");
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
       }

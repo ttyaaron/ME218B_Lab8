@@ -39,7 +39,7 @@
 
 
 /*----------------------------- Module Defines ----------------------------*/
-#define SPI_POLL_INTERVAL_MS 1000
+#define SPI_POLL_INTERVAL_MS 2000
 SPI_Module_t Module = SPI_SPI1;
 
 /*---------------------------- Module Functions ---------------------------*/
@@ -101,7 +101,7 @@ bool InitCommandRetrieveService(uint8_t Priority)
    
     SPI_PinMap_t SSPin = SPI_RPA0; // Chip Select Pin
     SPI_PinMap_t SDOPin = SPI_RPA1; // Chip Output Pin
-    SPI_PinMap_t SDIPin = SPI_RPB11; // Chip Input Pin
+    SPI_PinMap_t SDIPin = SPI_RPB8; // Chip Input Pin
 
     
     TRISAbits.TRISA0 = 0;
@@ -118,8 +118,8 @@ bool InitCommandRetrieveService(uint8_t Priority)
     SPISetup_MapSSOutput(Module, SSPin);
     SPISetup_MapSDOutput(Module, SDOPin);
     //SPISetup_MapSDInput(Module, SDIPin);
-    SDI1R = 0b0011;
-    TRISBbits.TRISB11 = 1;
+    SDI1R = 0b0100;
+    TRISBbits.TRISB8 = 1;
   
     SPISetup_SetClockIdleState(Module, ClockIdle);
     SPISetup_SetActiveEdge(Module, ChosenEdge);
@@ -241,6 +241,7 @@ ES_Event_t RunCommandRetrieveService(ES_Event_t ThisEvent)
             DB_printf("Invalid command byte: 0x%x\r\n", commandByte);
           }
           SawNewCommandFlag = false;
+          LastCommand = 0xFF;
         }
 
       ES_Timer_InitTimer(COMMAND_SPI_TIMER, SPI_POLL_INTERVAL_MS);
