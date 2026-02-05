@@ -196,17 +196,7 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
             CurrentState = AligningWithBeacon;
             break;
           case CMD_SEARCH_TAPE:
-            // If already HIGH, the ES_TAPE_DETECTED event will be posted immediately
-            if( ReadTapeSensorPin() == true ) {
-              ES_Event_t TapeEvent;
-              TapeEvent.EventType = ES_TAPE_DETECTED;
-              TapeEvent.EventParam = 0;
-              PostMainLogicFSM(TapeEvent);
-            }
-            else{
-            // If not detected, act to look for line detect signal
-              SearchForTape();
-            }
+            SearchForTape();
             CurrentState = SearchingForTape;
             break;
           default:
@@ -240,6 +230,7 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
                ThisEvent.EventParam == TAPE_SEARCH_TIMER) // stop looking for tape after set time
       {
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        // TODO: Print("Tape Search Failed")
         DB_printf("Tape Search Failed: Timeout");
         CurrentState = Stopped;
       }
@@ -261,6 +252,7 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
                ThisEvent.EventParam == BEACON_ALIGN_TIMER) // set time passed, stop aligning towards beacon
       {
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        // TODO: Print("Alignment Failed")
         DB_printf("Beacon Search Failed: Timeout");
         CurrentState = Stopped;
       }

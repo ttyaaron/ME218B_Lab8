@@ -87,9 +87,7 @@ bool ReadBeaconInputPin(void)
 ****************************************************************************/
 void InitTapeSensorPin(void)
 {
-  // Configure the beacon input pin (TRIS/ANSEL)
-  TRISBbits.TRISB3 = 1;   // Set as input
-  ANSELBbits.ANSB3 = 0;   // Set as digital
+  // TODO: Configure the tape sensor input pin (TRIS/ANSEL)
 }
 
 /****************************************************************************
@@ -110,10 +108,7 @@ void InitTapeSensorPin(void)
 ****************************************************************************/
 bool ReadTapeSensorPin(void)
 {
-  // Return the tape sensor input pin state
-  if (PORTBbits.RB3 == 1) {
-    return true;
-  }
+  // TODO: Return the tape sensor input pin state
   return false;
 }
 

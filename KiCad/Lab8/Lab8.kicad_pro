@@ -330,6 +330,14 @@
     [
       "415f1343-5bea-4de7-9b3a-ad5b76fd5938",
       "IR_Module"
+    ],
+    [
+      "6c464a85-45db-4a78-b613-c9f5d1336acd",
+      "Line_Detection_Module"
+    ],
+    [
+      "0b494364-22e3-4e2a-8454-a9fb6e817489",
+      "SPI_Module"
     ]
   ],
   "text_variables": {}
