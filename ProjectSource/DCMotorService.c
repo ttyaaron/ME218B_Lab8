@@ -202,13 +202,13 @@ ES_Event_t RunDCMotorService(ES_Event_t ThisEvent)
       {
         MOTOR_REVERSE_PIN_L = 0;
         OC1RS = dutyCycle;
-        DB_printf("dutyCycle left0:%u\n", dutyCycle);
+        DB_printf("dutyCycle left 0:%u\r\n", dutyCycle);
       }
       else
       {
         MOTOR_REVERSE_PIN_L = 1;
         OC1RS = PWM_PERIOD_TICKS - dutyCycle + 1;
-        DB_printf("dutyCycle left1:%u\n", OC1RS);
+        DB_printf("dutyCycle left 1:%u\r\n", OC1RS);
       }
 
       // Hardware motor already inversed for right motor, when forward means same current go through left and right motor
@@ -216,13 +216,13 @@ ES_Event_t RunDCMotorService(ES_Event_t ThisEvent)
       {
         MOTOR_REVERSE_PIN_R = 0;
         OC2RS = dutyCycle;
-        DB_printf("dutyCycle right0:%u\n", dutyCycle);
+        DB_printf("dutyCycle right 0:%u\r\n", dutyCycle);
       }
       else
       {
         MOTOR_REVERSE_PIN_R = 1;
         OC2RS = PWM_PERIOD_TICKS - dutyCycle + 1;
-        DB_printf("dutyCycle right1:%u\n", OC2RS);
+        DB_printf("dutyCycle right 1:%u\r\n", OC2RS);
       }
 
       break;
@@ -267,7 +267,7 @@ void MotorCommandWrapper(uint16_t speedLeft, uint16_t speedRight,
   ThisEvent.EventParam = 0;
   PostDCMotorService(ThisEvent);
 
-  DB_printf("DesiredSpeed:%u %u, DesiredDirection: %u %u\n", DesiredSpeed[0], DesiredSpeed[1], DesiredDirection[0], DesiredDirection[1]);
+  DB_printf("DesiredSpeed:%u %u, DesiredDirection: %u %u\r\n", DesiredSpeed[0], DesiredSpeed[1], DesiredDirection[0], DesiredDirection[1]);
 }
 
 /***************************************************************************

@@ -235,11 +235,11 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
         MotorCommandWrapper(0, 0, FORWARD, FORWARD);
         CurrentState = Stopped;
       }
-      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED) // stop command received while moving
+      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED) // while simple moving, new command received
       {
-          DB_printf("Stopped command received while moving\r\n");
-        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        DB_printf("New command received while moving\r\n");
         CurrentState = Stopped;
+        PostMainLogicFSM(ThisEvent); //go back to stopped list to take action on new command
       }
       break;
 
@@ -257,19 +257,18 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
         DB_printf("Tape Search Failed: Timeout");
         CurrentState = Stopped;
       }
-      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
-               ThisEvent.EventParam == CMD_STOP)    // stop command received while searching for tape
+      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED)    // new command received while searching for tape
       {
-          DB_printf("Motor Timeout Received while searching for tape\r\n");
-        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        DB_printf("New command received while searching for tape\r\n");
         CurrentState = Stopped;
+        PostMainLogicFSM(ThisEvent);
       }
       break;
 
     case AligningWithBeacon:
-      if (ThisEvent.EventType == ES_BEACON_DETECTED) // found direction of beacon, move forward
+      if (ThisEvent.EventType == ES_BEACON_DETECTED) // found direction of beacon
       {
-          DB_printf("Found beacon, moving forward\r\n");
+        DB_printf("Found beacon\r\n");
         MotorCommandWrapper(0, 0, FORWARD, FORWARD); // change speed
         CurrentState = Stopped;
       }
@@ -280,12 +279,11 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
         DB_printf("Beacon Search Failed: Timeout");
         CurrentState = Stopped;
       }
-      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED &&
-               ThisEvent.EventParam == CMD_STOP) // stop command received while aligning for beacon
+      else if (ThisEvent.EventType == ES_COMMAND_RETRIEVED) // new command received while aligning for beacon
       {
-          DB_printf("Stop command received while aligning with beacon\r\n");
-        MotorCommandWrapper(0, 0, FORWARD, FORWARD);
+        DB_printf("New command received while aligning with beacon\r\n");
         CurrentState = Stopped;
+        PostMainLogicFSM(ThisEvent);
       }
       break;
 
