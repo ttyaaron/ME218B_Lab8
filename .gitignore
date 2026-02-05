@@ -4,3 +4,4 @@ build/
 
 #Remove unncessary debug files
 debug/
+/dist/

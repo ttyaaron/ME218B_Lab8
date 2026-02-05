@@ -151,7 +151,7 @@ bool Check4BeaconDetected(void)
     ThisEvent.EventParam = 0;
     PostMainLogicFSM(ThisEvent);
     LastBeaconState = CurrentBeaconState;
-    printf("Posting ES_BEACON_DETECTED event.\r\n");
+//    printf("Posting ES_BEACON_DETECTED event.\r\n");
     DEBUG_OUTPUT_PIN_LAT = 0;
     return true;
   }

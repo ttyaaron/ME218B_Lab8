@@ -137,7 +137,7 @@ ES_Event_t RunMainLogicFSM(ES_Event_t ThisEvent)
   ES_Event_t ReturnEvent;
   ReturnEvent.EventType = ES_NO_EVENT;
   
-  DB_printf("Current State is %d \r\n", CurrentState);
+//  DB_printf("Current State is %d \r\n", CurrentState);
 
   switch (CurrentState)
   {
@@ -536,7 +536,7 @@ static void SearchForTape(void)
   // MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, FORWARD)
   // Initialize TAPE_SEARCH_TIMER
   MotorCommandWrapper(FULL_SPEED, FULL_SPEED, FORWARD, FORWARD);
-  ES_Timer_InitTimer(TAPE_SEARCH_TIMER, TAPE_SEARCH_MS);
+//  ES_Timer_InitTimer(TAPE_SEARCH_TIMER, TAPE_SEARCH_MS);
 }
 
 /****************************************************************************

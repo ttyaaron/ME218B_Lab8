@@ -67,7 +67,7 @@
 #define MOTOR_REVERSE_PIN_R   LATBbits.LATB13
 
 // PWM configuration (period defined in CommonDefinitions.h)
-#define INITIAL_DUTY_TICKS 1100  // Initial duty cycle in ticks
+#define INITIAL_DUTY_TICKS 0  // Initial duty cycle in ticks
 #define ENABLE_POT_AD
 
 /*---------------------------- Module Functions ---------------------------*/
@@ -414,8 +414,9 @@ static uint16_t MapSpeedToDutyCycle(uint16_t desiredSpeed)
 {
   // Map the desired speed to duty cycle
   // desiredSpeed range: [0, ADC_MAX_VALUE] → dutyCycle range: [0, PWM_PERIOD_TICKS]
-  uint32_t dutyCycle = ((uint32_t)desiredSpeed * PWM_PERIOD_TICKS) / ADC_MAX_VALUE;
-  
+  // uint32_t dutyCycle = ((uint32_t)desiredSpeed * PWM_PERIOD_TICKS) / ADC_MAX_VALUE;
+  uint16_t dutyCycle = desiredSpeed;
+
   // Clamp duty cycle to safe range
   if (dutyCycle > DUTY_MAX_TICKS)
   {

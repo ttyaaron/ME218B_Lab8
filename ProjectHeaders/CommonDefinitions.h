@@ -74,9 +74,8 @@ extern const uint8_t PrescaleLookup[];
 #define SECONDS_PER_MINUTE 60       // Conversion factor for RPM calculations
 
 // PWM configuration (shared between DCMotorService and SpeedControlService)
-#define PWM_FREQUENCY 4000         // PWM frequency in Hz
 #define DUTY_MAX_TICKS 2000        // Maximum duty cycle ticks (100%)
-#define PWM_PERIOD_TICKS (DUTY_MAX_TICKS - 1)        // PWM period in timer ticks (for 5kHz at 20MHz PBCLK with 1:2 prescale)
+#define PWM_PERIOD_TICKS 1999        // PWM period in timer ticks (for 5kHz at 20MHz PBCLK with 1:2 prescale)
 #define DUTY_MIN_TICKS 0            // Minimum duty cycle ticks (0%)
 
 #define TIMING_PIN_LAT LATBbits.LATB15
@@ -90,14 +89,14 @@ extern const uint8_t PrescaleLookup[];
 #define REVERSE 1
 
 // Speed Levels (duty cycle ticks)
-#define HALF_SPEED (DUTY_MAX_TICKS / 2)   // 50% duty cycle
-#define FULL_SPEED DUTY_MAX_TICKS          // 100% duty cycle
+#define HALF_SPEED 1500   // 50% duty cycle
+#define FULL_SPEED 2000   // 100% duty cycle
 
 // Timer Durations (ms)
 #define SIMPLE_MOVE_90_MS 1500
 #define SIMPLE_MOVE_45_MS 750
 #define BEACON_ALIGN_MS 5000
-#define TAPE_SEARCH_MS 5000
+#define TAPE_SEARCH_MS 10000
 
 // Debug Pin
 #define DEBUG_OUTPUT_PIN_LAT LATBbits.LATB15
