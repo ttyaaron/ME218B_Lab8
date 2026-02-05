@@ -5,14 +5,14 @@
         <group>
             <file>file:/U:/ttyaaron/ME218B_Lab8/ProjectSource/Ports.c</file>
             <file>file:/U:/ttyaaron/ME218B_Lab8/ProjectSource/MainLogicFSM.c</file>
-            <file>file:/U:/ttyaaron/ME218B_Lab8/FrameworkSource/ES_Timers.c</file>
+            <file>file:/U:/ttyaaron/ME218B_Lab8/ProjectSource/ADService.c</file>
             <file>file:/U:/ttyaaron/ME218B_Lab8/ProjectSource/EventCheckers.c</file>
             <file>file:/U:/ttyaaron/ME218B_Lab8/ProjectSource/DCMotorService.c</file>
             <file>file:/U:/ttyaaron/ME218B_Lab8/ProjectHeaders/CommonDefinitions.h</file>
             <file>file:/U:/ttyaaron/ME218B_Lab8/ProjectHeaders/MainLogicFSM.h</file>
             <file>file:/U:/ttyaaron/ME218B_Lab8/FrameworkHeaders/ES_ServiceHeaders.h</file>
             <file>file:/U:/ttyaaron/ME218B_Lab8/ProjectSource/BeaconDetectService.c</file>
-            <file>file:/U:/ttyaaron/ME218B_Lab8/ProjectHeaders/Ports.h</file>
+            <file>file:/U:/ttyaaron/ME218B_Lab8/FrameworkHeaders/ES_Configure.h</file>
         </group>
     </open-files>
 </project-private>
