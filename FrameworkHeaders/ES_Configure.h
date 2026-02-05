@@ -267,7 +267,8 @@ typedef enum
   ES_NEW_SIGNAL_EDGE,       /* signals a new signal edge from phototransistor */
   ES_COMMAND_RETRIEVED,     /* signals a new command byte from SPI */
   ES_BEACON_DETECTED,       /* signals a beacon detection */
-  ES_TAPE_DETECTED          /* signals a tape detection */
+  ES_TAPE_DETECTED,          /* signals a tape detection */
+  ES_NEW_COMMAND            /* New command received from command generator */
 }ES_EventType_t;
 
 /****************************************************************************/

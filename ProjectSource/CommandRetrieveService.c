@@ -34,10 +34,12 @@
 #include "PIC32_SPI_HAL.h"
 #include "MainLogicFSM.h"
 #include "dbprintf.h"
+#include <xc.h>
+#include <sys/attribs.h>
 
 
 /*----------------------------- Module Defines ----------------------------*/
-#define SPI_POLL_INTERVAL_MS 10
+#define SPI_POLL_INTERVAL_MS 1000
 SPI_Module_t Module = SPI_SPI1;
 
 /*---------------------------- Module Functions ---------------------------*/
@@ -47,8 +49,20 @@ static bool IsValidCommandByte(uint8_t commandByte);
 /*---------------------------- Module Variables ---------------------------*/
 static uint8_t MyPriority;
 static bool SawNewCommandFlag;
+static uint8_t LastCommand;
+
+uint8_t QueryCommandGenerator(void);
 
 /*------------------------------ Module Code ------------------------------*/
+/*
+void __ISR(_SPI_1_VECTOR, IPL4SOFT) SPI1Handler(void){
+    uint8_t data = 0x0;
+    data = (uint8_t) SPIOperate_ReadData(Module);
+    IEC1CLR = _IEC1_SPI1RXIE_MASK | _IEC1_SPI1TXIE_MASK | _IEC1_SPI1EIE_MASK; 
+    
+    CurrentCommand = data;
+}
+ * */
 /****************************************************************************
  Function
      InitCommandRetrieveService
@@ -84,36 +98,48 @@ bool InitCommandRetrieveService(uint8_t Priority)
     SPI_ActiveEdge_t ChosenEdge = SPI_FIRST_EDGE;
     SPI_XferWidth_t DataWidth = SPI_8BIT;
     
-    /*Temporary, can change these later*/
+   
     SPI_PinMap_t SSPin = SPI_RPA0; // Chip Select Pin
     SPI_PinMap_t SDOPin = SPI_RPA1; // Chip Output Pin
-    SPI_PinMap_t SDIPin = SPI_RPB1; // Chip Input Pin
+    SPI_PinMap_t SDIPin = SPI_RPB11; // Chip Input Pin
 
     
     TRISAbits.TRISA0 = 0;
     TRISAbits.TRISA1 = 0;
-    TRISBbits.TRISB1 = 1;
+    
     ANSELAbits.ANSA0 = 0;
     ANSELAbits.ANSA1 = 0;
-    ANSELBbits.ANSB1 = 0;
+    
+    SPI1CONbits.SRXISEL = 0b01;
     
     SPISetup_BasicConfig(Module);
     SPISetup_SetLeader(Module, SamplePhase);
     SPISetup_SetBitTime(Module, DesiredClock_ns);
     SPISetup_MapSSOutput(Module, SSPin);
     SPISetup_MapSDOutput(Module, SDOPin);
-    SPISetup_MapSDInput(Module, SDIPin);
-    
+    //SPISetup_MapSDInput(Module, SDIPin);
+    SDI1R = 0b0011;
+    TRISBbits.TRISB11 = 1;
+  
     SPISetup_SetClockIdleState(Module, ClockIdle);
     SPISetup_SetActiveEdge(Module, ChosenEdge);
     SPISetup_SetXferWidth(Module, DataWidth);
     SPISetEnhancedBuffer(Module, true);
     
     SPISetup_EnableSPI(Module);
+    /* Set up interrupt */
+    /*
+    INTCONbits.MVEC = 1;
+    IPC7bits.SPI1IP = 4;
+    IPC7bits.SPI1IS = 0;
+    
+    IFS1CLR =  _IFS1_SPI1RXIF_MASK;
+    IEC1SET = _IEC1_SPI1RXIE_MASK; 
+    */
 
   // Start a periodic poll timer if polling is used
   ES_Timer_InitTimer(COMMAND_SPI_TIMER, SPI_POLL_INTERVAL_MS);
-
+  __builtin_enable_interrupts();
   // Post the initial transition event
   ThisEvent.EventType = ES_INIT;
   if (ES_PostToService(MyPriority, ThisEvent) == true)
@@ -190,31 +216,36 @@ ES_Event_t RunCommandRetrieveService(ES_Event_t ThisEvent)
       // ELSE
       //     Ignore (repeated old command value)
 
-      uint8_t commandByte = ReadSPICommandByte();
-      if (commandByte == 0xFF)
-      {
-        SawNewCommandFlag = true;
-      }
-      else if (SawNewCommandFlag == true)
-      {
-        if (IsValidCommandByte(commandByte))
+        
+        uint8_t commandByte = (uint8_t) QueryCommandGenerator();
+        DB_printf("Received Command byte: 0x%x\r\n", commandByte);
+        if (commandByte == 0xFF)
         {
-          ES_Event_t CommandEvent;
-          CommandEvent.EventType = ES_COMMAND_RETRIEVED;
-          CommandEvent.EventParam = commandByte;
-          PostMainLogicFSM(CommandEvent);
+          SawNewCommandFlag = true;
         }
-        else
+        else if (SawNewCommandFlag == true)
         {
-          DB_printf("Invalid command byte: 0x%02X\r\n", commandByte);
+          if (IsValidCommandByte(commandByte))
+          {
+            ES_Event_t CommandEvent;
+            if(commandByte != LastCommand) {
+                CommandEvent.EventType = ES_COMMAND_RETRIEVED;
+                CommandEvent.EventParam = commandByte;
+                PostMainLogicFSM(CommandEvent);
+                LastCommand = commandByte;
+            }
+            
+          }
+          else
+          {
+            DB_printf("Invalid command byte: 0x%x\r\n", commandByte);
+          }
+          SawNewCommandFlag = false;
         }
-        SawNewCommandFlag = false;
-      }
 
       ES_Timer_InitTimer(COMMAND_SPI_TIMER, SPI_POLL_INTERVAL_MS);
       break;
     }
-
     default:
       break;
   }
@@ -239,7 +270,7 @@ ES_Event_t RunCommandRetrieveService(ES_Event_t ThisEvent)
  Author
      Tianyu, 02/03/26
 ****************************************************************************/
-static uint8_t ReadSPICommandByte(void)
+uint8_t QueryCommandGenerator(void)
 {
   // TODO: Implement SPI read (leader initiates query)
   // Pseudocode:
@@ -247,10 +278,11 @@ static uint8_t ReadSPICommandByte(void)
   //   Transfer dummy byte and read response
   //   Deassert chip select
   //   Return response byte
-    uint8_t response;
-    SPIOperate_SPI1_Send8(0xAA);
-    response = (uint8_t) SPIOperate_ReadData(Module);
-    return response;
+    if(!SPI1STATbits.SPITBF) {
+        SPIOperate_SPI1_Send8Wait(0xAA);
+    }
+    uint8_t data = (uint8_t) SPIOperate_ReadData(Module);
+    return data;
 }
 
 /****************************************************************************

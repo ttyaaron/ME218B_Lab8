@@ -53,12 +53,6 @@ static volatile uint32_t * const outputMapRegisters[] = { &RPA0R, &RPA1R,
                       &RPB13R, &RPB14R, &RPB15R 
 };
 
-static volatile uint32_t * const inputMapRegisters[] = { &RPA0R, &RPA1R, 
-                      &RPA2R, &RPA3R, &RPA4R, 
-                      &RPB0R, &RPB1R, &RPB2R, &RPB3R, &RPB4R, &RPB5R, 
-                      &RPB6R, &RPB7R, &RPB8R, &RPB9R, &RPB10R, &RPB11R, &RPB12R,
-                      &RPB13R, &RPB14R, &RPB15R 
-};
 
 // these are the TRISxSET registers indexed by the SPI_PinMap_t value
 static volatile uint32_t * const setTRISRegisters[] = { &TRISASET, &TRISASET,
@@ -385,16 +379,16 @@ bool SPISetup_MapSDInput(SPI_Module_t WhichModule, SPI_PinMap_t WhichPin)
       }else //there is an SD0 pin so map it
       {
         // clear the TRIS bit to make it an output
-        *clrTRISRegisters[WhichPin] = mapPinMap2BitPosn[WhichPin];
+        *setTRISRegisters[WhichPin] = mapPinMap2BitPosn[WhichPin];
         // clear the ANSEL bit to disable analog on the pin
         *clrANSELRegisters[WhichPin] = mapPinMap2BitPosn[WhichPin];
             
         if (SPI_SPI1 == WhichModule)
         {
-          *inputMapRegisters[WhichPin] = SDIPinMap; // Map SS to chosen pin
+          SDI1R = SDIPinMap; // Map SS to chosen pin
         }else  
         {   // must be SPI2 so set up INT1
-          *inputMapRegisters[WhichPin] = SDIPinMap; // Map SS to chosen pin
+          SDI2R = SDIPinMap; // Map SS to chosen pin
         }
       }
     }else // not in Leader mode
@@ -641,8 +635,7 @@ void SPIOperate_SPI1_Send32(uint32_t TheData)
 void SPIOperate_SPI1_Send8Wait(uint8_t TheData)
 {
     SPI1BUF = TheData;
-    while(!SPIOperate_HasSS1_Risen);    
-    for(uint16_t i = 0; i < 10000; i++);
+    while(!SPIOperate_HasSS1_Risen);
 
         //wait for SS to go high
 }
@@ -700,8 +693,10 @@ uint32_t SPIOperate_ReadData(SPI_Module_t WhichModule)
 {
   // not needed for ME218a Labs
     selectModuleRegisters(WhichModule);
-    uint32_t ReceivedData;
+    
+    uint32_t ReceivedData = 0x0;
     ReceivedData = *pSPIBUF;
+    
     return ReceivedData;
 }
 /****************************************************************************
