@@ -21,24 +21,35 @@
    ES_COMMAND_RETRIEVED(commandByte)
 
    InitCommandRetrieveService
-       Configure SPI peripheral (mode, clock, chip select)
-       Initialize command queue/buffer if needed
+       Initialize flag to track when new command is ready
+       Configure SPI hardware as leader with appropriate timing settings
+       Set up chip select, data input, and data output pins
+       Enable SPI communication
+       Start timer to poll for commands every 2 seconds
+       Post initialization event
 
    RunCommandRetrieveService
-       Static variable: SawNewCommandFlag = false
-       On ES_TIMEOUT(SPI_POLL_TIMER) OR SPI_RX_READY interrupt
-           Read byte from SPI (leader initiates query)
-           IF byte == 0xFF
-               SawNewCommandFlag = true
-           ELSE IF SawNewCommandFlag == true
-               IF byte is valid command
-                   Post ES_COMMAND_RETRIEVED(commandByte) to MainLogicService
-               ELSE
-                   Ignore or log invalid command
-               SawNewCommandFlag = false
-           ELSE
-               Ignore (repeated old command value)
-           Restart SPI_POLL_TIMER (if polling)
+       When timer expires:
+           Query the command generator for a new byte
+           If received 0xFF (new command ready flag):
+               Remember that next byte will be the new command
+           Otherwise if we previously saw the ready flag:
+               If the byte is a valid command:
+                   If it differs from the last command posted:
+                       Post the new command to the main logic state machine
+                       Remember this command
+               Otherwise:
+                   Log that an invalid command was received
+               Clear the new command ready flag
+           Restart the polling timer
+
+   QueryCommandGenerator
+       Send a dummy byte to clock out a response from the follower
+       Read and return the response byte
+
+   IsValidCommandByte
+       Check if the byte matches any entry in the valid commands lookup table
+       Return true if valid, false otherwise
 
  History
  When           Who     What/Why
